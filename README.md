@@ -19,7 +19,7 @@ It combines:
 5. Open a dashboard, select **Add card**, and choose **Anenji Wall Panel**.
 6. Select the required entities in the visual editor. YAML is not required.
 
-The editor uses one setting per row so it remains readable inside Home Assistant's narrow card-editor panel. For battery flow, select either one signed power sensor (`+` charging, `−` discharging) or separate charging and discharging power sensors. If none are available, the card estimates battery power as `Solar + Grid − Home`.
+The editor uses one setting per row so it remains readable inside Home Assistant's narrow card-editor panel. Select the inverter's `Battery Power` entity for the combined net battery flow, regardless of whether charging comes from solar, grid, or both. If it is unavailable, the card estimates battery power as `Solar + Grid − Home`. Battery ETA is shown in its own summary block using the configured capacity and grid-switch percentage.
 
 `dashboard.example.yaml` remains available as an optional advanced example.
 
