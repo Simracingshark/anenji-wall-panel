@@ -10,6 +10,32 @@ class AnenjiWallPanel extends HTMLElement {
     this._clockTimer = null;
   }
 
+  static getConfigElement() {
+    return document.createElement("anenji-wall-panel-editor");
+  }
+
+  static getStubConfig() {
+    return {
+      title: "ANENJI 11 kW",
+      entities: {},
+      outlets: [
+        { name: "Desk", icon: "mdi:desk-lamp" },
+        { name: "Printer", icon: "mdi:printer-3d" },
+        { name: "Speaker", icon: "mdi:speaker" },
+        { name: "Spare", icon: "mdi:power-socket-eu" },
+      ],
+      radio: {
+        stations: [
+          { name: "STATION 1", option: "" },
+          { name: "STATION 2", option: "" },
+          { name: "STATION 3", option: "" },
+          { name: "STATION 4", option: "" },
+        ],
+      },
+      thresholds: { active_power: 20, battery_low: 20 },
+    };
+  }
+
   setConfig(config) {
     if (!config || !config.entities) {
       throw new Error("Anenji Wall Panel requires an entities section.");
@@ -305,9 +331,13 @@ class AnenjiWallPanel extends HTMLElement {
       ? station.state
       : (player && player.attributes.media_title) || "WI-FI RADIO";
     const configuredStations = Array.isArray(radio.stations) ? radio.stations : [];
+    const normalizedStation = String(rawStationName).toLowerCase();
     const activeStation = configuredStations.find((item) => {
       const expected = item.option || item.match || item.name;
-      return expected && String(rawStationName).toLowerCase().includes(String(expected).toLowerCase());
+      return expected && normalizedStation === String(expected).toLowerCase();
+    }) || configuredStations.find((item) => {
+      const expected = item.option || item.match || item.name;
+      return expected && normalizedStation.includes(String(expected).toLowerCase());
     });
     const stationName = activeStation && activeStation.name ? activeStation.name : rawStationName;
     const trackName = player && (player.attributes.media_artist || player.attributes.media_channel)
@@ -574,7 +604,7 @@ class AnenjiWallPanel extends HTMLElement {
       }
       .energy-node:active, .summary-item:active, .outlet:active, .station:active, .round:active { transform: scale(.97); }
       .energy-node ha-icon { width: 46px; height: 46px; flex: 0 0 46px; }
-      .energy-node div { min-width: 0; }
+      .energy-node > div { min-width: 0; flex: 1; text-align: center; }
       .energy-node span { display: block; color: var(--muted); font-size: 14px; font-weight: 800; letter-spacing: .03em; }
       .energy-node strong { display: block; color: #f4f7fa; margin-top: 4px; font-size: 25px; line-height: 1; white-space: nowrap; }
       .energy-node strong b { font: inherit; }
@@ -592,7 +622,7 @@ class AnenjiWallPanel extends HTMLElement {
       .battery.low ha-icon, .battery.low strong { color: var(--red); }
       .inverter { width: 180px; height: 106px; top: 50%; left: 50%; transform: translate(-50%, -50%); justify-content: center; padding: 10px 12px; text-align: center; }
       .inverter > ha-icon { display: none; }
-      .inverter-copy { display: grid; gap: 4px; width: 100%; }
+      .inverter-copy { display: grid; gap: 4px; width: 100%; text-align: center; }
       .inverter-copy strong { color: #f4f7fa; font-size: 15px; line-height: 1.15; margin: 0 0 2px; white-space: nowrap; }
       .inverter-copy span { font-size: 14px; font-weight: 600; }
       .inverter-copy b { color: var(--blue); font-size: 20px; }
@@ -665,6 +695,241 @@ class AnenjiWallPanel extends HTMLElement {
   }
 }
 
+class AnenjiWallPanelEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+    this._hass = null;
+    this._config = null;
+    this._openSections = new Set(["general", "energy"]);
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._hydratePickers();
+  }
+
+  setConfig(config) {
+    const stub = AnenjiWallPanel.getStubConfig();
+    const incoming = config || {};
+    this._config = {
+      ...stub,
+      ...incoming,
+      entities: { ...stub.entities, ...(incoming.entities || {}) },
+      outlets: this._normaliseRows(incoming.outlets, stub.outlets, 4),
+      radio: {
+        ...stub.radio,
+        ...(incoming.radio || {}),
+        stations: this._normaliseRows(
+          incoming.radio && incoming.radio.stations,
+          stub.radio.stations,
+          4
+        ),
+      },
+      thresholds: { ...stub.thresholds, ...(incoming.thresholds || {}) },
+    };
+    this._render();
+  }
+
+  _normaliseRows(rows, fallback, count) {
+    const source = Array.isArray(rows) ? rows : [];
+    return Array.from({ length: count }, (_, index) => ({
+      ...(fallback[index] || {}),
+      ...(source[index] || {}),
+    }));
+  }
+
+  _render() {
+    if (!this._config) return;
+    const stationOptions = this._stationOptions();
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host { display: block; color: var(--primary-text-color); }
+        .editor { display: grid; gap: 10px; padding: 4px 0 12px; }
+        .intro { color: var(--secondary-text-color); font-size: 13px; line-height: 1.45; padding: 0 2px 4px; }
+        details { border: 1px solid var(--divider-color); border-radius: 10px; overflow: hidden; background: var(--card-background-color); }
+        summary { cursor: pointer; padding: 13px 14px; font-weight: 700; user-select: none; }
+        .section { display: grid; gap: 12px; padding: 4px 14px 16px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .row-card { display: grid; grid-template-columns: minmax(110px, .75fr) minmax(180px, 1.4fr) minmax(120px, .9fr); gap: 8px; align-items: end; padding: 10px; border: 1px solid var(--divider-color); border-radius: 9px; }
+        .station-row { grid-template-columns: minmax(120px, .8fr) minmax(220px, 1.5fr); }
+        label { display: grid; gap: 6px; color: var(--secondary-text-color); font-size: 12px; }
+        input, select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--input-fill-color, var(--card-background-color)); color: var(--primary-text-color); font: inherit; box-sizing: border-box; }
+        ha-entity-picker { width: 100%; }
+        .hint { color: var(--secondary-text-color); font-size: 12px; line-height: 1.35; }
+        @media (max-width: 700px) {
+          .grid, .row-card, .station-row { grid-template-columns: 1fr; }
+        }
+      </style>
+      <div class="editor">
+        <div class="intro">Choose entities here. YAML is not required. Required fields are marked with an asterisk.</div>
+
+        ${this._section("general", "General", `
+          <div class="grid">
+            ${this._textField("Panel title", "title")}
+            ${this._entityField("Indoor temperature", "indoor_temperature", ["sensor"])}
+          </div>
+          <div class="grid">
+            ${this._numberField("Active flow threshold (W)", "thresholds.active_power", 0, 1000)}
+            ${this._numberField("Low battery threshold (%)", "thresholds.battery_low", 0, 100)}
+          </div>
+        `)}
+
+        ${this._section("energy", "Energy entities", `
+          <div class="grid">
+            ${this._entityField("Solar power *", "entities.solar_power", ["sensor"])}
+            ${this._entityField("Combined grid power *", "entities.grid_power", ["sensor"])}
+            ${this._entityField("Home load power *", "entities.home_power", ["sensor"])}
+            ${this._entityField("Battery state of charge *", "entities.battery_soc", ["sensor"])}
+            ${this._entityField("Battery power", "entities.battery_power", ["sensor"])}
+            ${this._entityField("Battery voltage", "entities.battery_voltage", ["sensor"])}
+            ${this._entityField("Inverter load percent", "entities.load_percent", ["sensor"])}
+            ${this._entityField("Inverter temperature", "entities.inverter_temperature", ["sensor"])}
+            ${this._entityField("Grid import today", "entities.grid_energy_today", ["sensor"])}
+            ${this._entityField("Battery charged today", "entities.battery_charge_today", ["sensor"])}
+            ${this._entityField("Battery discharged today", "entities.battery_discharge_today", ["sensor"])}
+          </div>
+          <div class="hint">Combined grid power should contain Grid to Battery + Grid to Load.</div>
+        `)}
+
+        ${this._section("outlets", "Outlets", this._config.outlets.map((item, index) => `
+          <div class="row-card">
+            ${this._textField("Name", `outlets.${index}.name`)}
+            ${this._entityField("Entity", `outlets.${index}.entity`, ["switch", "input_boolean", "light"])}
+            ${this._textField("Icon", `outlets.${index}.icon`)}
+          </div>
+        `).join(""))}
+
+        ${this._section("radio", "Wi-Fi Radio", `
+          <div class="grid">
+            ${this._entityField("Media player", "radio.media_player", ["media_player"])}
+            ${this._entityField("Current station", "radio.current_station", ["sensor"])}
+            ${this._entityField("Playback status", "radio.playback_status", ["sensor"])}
+            ${this._entityField("Volume", "radio.volume", ["number", "input_number"])}
+            ${this._entityField("Play / Pause", "radio.play_pause", ["button", "script"])}
+            ${this._entityField("Previous station", "radio.previous", ["button", "script"])}
+            ${this._entityField("Next station", "radio.next", ["button", "script"])}
+            ${this._entityField("Station selector", "radio.station_select", ["select", "input_select"])}
+            ${this._entityField("Play selected", "radio.play_selected", ["button", "script"])}
+          </div>
+        `)}
+
+        ${this._section("stations", "Station presets", `
+          <datalist id="station-options">
+            ${stationOptions.map((option) => `<option value="${this._escape(option)}"></option>`).join("")}
+          </datalist>
+          ${this._config.radio.stations.map((station, index) => `
+            <div class="row-card station-row">
+              ${this._textField("Button label", `radio.stations.${index}.name`)}
+              ${this._textField("Station option", `radio.stations.${index}.option`, "station-options")}
+            </div>
+          `).join("")}
+          <div class="hint">Station option must exactly match an option from the selected station entity.</div>
+        `)}
+      </div>
+    `;
+
+    this._bindEditorEvents();
+    this._hydratePickers();
+  }
+
+  _section(id, title, content) {
+    return `<details data-section="${id}" ${this._openSections.has(id) ? "open" : ""}>
+      <summary>${title}</summary><div class="section">${content}</div>
+    </details>`;
+  }
+
+  _entityField(label, path, domains) {
+    return `<label>${label}<ha-entity-picker data-entity-path="${path}" data-domains="${domains.join(",")}"></ha-entity-picker></label>`;
+  }
+
+  _textField(label, path, listId = "") {
+    const value = this._getPath(path);
+    return `<label>${label}<input type="text" data-config-path="${path}" value="${this._escape(value || "")}" ${listId ? `list="${listId}"` : ""}></label>`;
+  }
+
+  _numberField(label, path, min, max) {
+    const value = this._getPath(path);
+    return `<label>${label}<input type="number" data-config-path="${path}" value="${this._escape(value == null ? "" : value)}" min="${min}" max="${max}"></label>`;
+  }
+
+  _bindEditorEvents() {
+    this.shadowRoot.querySelectorAll("details[data-section]").forEach((details) => {
+      details.addEventListener("toggle", () => {
+        if (details.open) this._openSections.add(details.dataset.section);
+        else this._openSections.delete(details.dataset.section);
+      });
+    });
+
+    this.shadowRoot.querySelectorAll("[data-config-path]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const value = input.type === "number" && input.value !== "" ? Number(input.value) : input.value;
+        this._setPath(input.dataset.configPath, value);
+      });
+    });
+  }
+
+  _hydratePickers() {
+    if (!this.shadowRoot || !this._config) return;
+    this.shadowRoot.querySelectorAll("ha-entity-picker[data-entity-path]").forEach((picker) => {
+      if (picker.dataset.bound !== "true") {
+        picker.addEventListener("value-changed", (event) => {
+          this._setPath(picker.dataset.entityPath, event.detail && event.detail.value ? event.detail.value : "");
+        });
+        picker.dataset.bound = "true";
+      }
+      picker.hass = this._hass;
+      picker.value = this._getPath(picker.dataset.entityPath) || "";
+      picker.includeDomains = picker.dataset.domains.split(",");
+      picker.allowCustomEntity = true;
+    });
+  }
+
+  _stationOptions() {
+    if (!this._hass || !this._config || !this._config.radio.station_select) return [];
+    const state = this._hass.states[this._config.radio.station_select];
+    return state && state.attributes && Array.isArray(state.attributes.options)
+      ? state.attributes.options
+      : [];
+  }
+
+  _getPath(path) {
+    return path.split(".").reduce((value, key) => value == null ? undefined : value[key], this._config);
+  }
+
+  _setPath(path, value) {
+    const config = JSON.parse(JSON.stringify(this._config));
+    const keys = path.split(".");
+    let target = config;
+    keys.forEach((key, index) => {
+      if (index === keys.length - 1) {
+        if (value === "") delete target[key];
+        else target[key] = value;
+      } else {
+        if (target[key] == null) target[key] = /^\d+$/.test(keys[index + 1]) ? [] : {};
+        target = target[key];
+      }
+    });
+    this._config = config;
+    const event = new Event("config-changed", { bubbles: true, composed: true });
+    event.detail = { config };
+    this.dispatchEvent(event);
+  }
+
+  _escape(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+}
+
+if (!customElements.get("anenji-wall-panel-editor")) {
+  customElements.define("anenji-wall-panel-editor", AnenjiWallPanelEditor);
+}
+
 if (!customElements.get("anenji-wall-panel")) {
   customElements.define("anenji-wall-panel", AnenjiWallPanel);
 }
@@ -674,4 +939,5 @@ window.customCards.push({
   type: "anenji-wall-panel",
   name: "Anenji Wall Panel",
   description: "One-screen energy, outlet, and Wi-Fi radio dashboard for a 1024×600 wall tablet.",
+  preview: true,
 });
