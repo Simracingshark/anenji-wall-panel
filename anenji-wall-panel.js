@@ -129,6 +129,19 @@ class AnenjiWallPanel extends HTMLElement {
                 ${this._energyNode("home", "mdi:home-outline", "HOME", "home-value", "home-unit")}
                 ${this._energyNode("battery", "mdi:battery-high", "BATTERY", "battery-value", "battery-unit")}
 
+                <div class="telemetry-chip telemetry-grid">
+                  <span>GRID INPUT</span><strong id="telemetry-grid">-- V • -- Hz</strong>
+                </div>
+                <div class="telemetry-chip telemetry-solar">
+                  <span>SOLAR TODAY</span><strong id="telemetry-solar">-- V • -- kWh</strong>
+                </div>
+                <div class="telemetry-chip telemetry-battery">
+                  <span>BATTERY</span><strong id="telemetry-battery">-- V • -- A</strong>
+                </div>
+                <div class="telemetry-chip telemetry-home">
+                  <span>HOME TODAY</span><strong id="telemetry-home">-- kWh</strong>
+                </div>
+
                 <div id="solar-flow" class="flow vertical solar-flow"><span>›</span><span>›</span><span>›</span></div>
                 <div id="grid-flow" class="flow horizontal grid-flow"><span>›</span><span>›</span><span>›</span></div>
                 <div id="home-flow" class="flow horizontal home-flow"><span>›</span><span>›</span><span>›</span></div>
@@ -332,6 +345,18 @@ class AnenjiWallPanel extends HTMLElement {
     this._setText("charged-value", this._formatEnergy(e.battery_charge_today));
     this._setText("discharged-value", this._formatEnergy(e.battery_discharge_today));
     this._setText("indoor-temp", this._formatTemperature(this._config.indoor_temperature));
+
+    const gridVoltageEntity = this._energyTelemetryEntity("grid_voltage", ["grid_voltage", "ac_input_voltage"]);
+    const gridFrequencyEntity = this._energyTelemetryEntity("grid_frequency", ["grid_frequency", "ac_input_frequency"]);
+    const pvVoltageEntity = this._energyTelemetryEntity("pv_voltage", ["pv_voltage", "pv_input_voltage"]);
+    const solarTodayEntity = this._energyTelemetryEntity("solar_energy_today", ["estimated_pv_energy_today", "pv_energy_today", "solar_energy_today"]);
+    const batteryVoltageEntity = this._energyTelemetryEntity("battery_voltage", ["battery_voltage"]);
+    const batteryCurrentEntity = this._energyTelemetryEntity("battery_current", ["battery_current", "battery_charge_current"]);
+    const homeTodayEntity = this._energyTelemetryEntity("home_energy_today", ["estimated_load_energy_today", "load_energy_today", "load_consumption_today"]);
+    this._setText("telemetry-grid", `${this._compactSensor(gridVoltageEntity, "V", 0)} • ${this._compactSensor(gridFrequencyEntity, "Hz", 1)}`);
+    this._setText("telemetry-solar", `${this._compactSensor(pvVoltageEntity, "V", 0)} • ${this._compactSensor(solarTodayEntity, "kWh", 1)}`);
+    this._setText("telemetry-battery", `${this._compactSensor(batteryVoltageEntity, "V", 1)} • ${this._compactSensor(batteryCurrentEntity, "A", 1)}`);
+    this._setText("telemetry-home", this._compactSensor(homeTodayEntity, "kWh", 1));
 
     this._setFlow("solar-flow", solar > this._config.thresholds.active_power, false);
     this._setFlow("home-flow", home > this._config.thresholds.active_power, false);
@@ -698,6 +723,35 @@ class AnenjiWallPanel extends HTMLElement {
     element.classList.toggle("reverse", Boolean(reverse));
   }
 
+  _energyTelemetryEntity(configKey, suffixes) {
+    const configured = this._config.entities && this._config.entities[configKey];
+    if (configured) return configured;
+    const anchors = [
+      this._config.entities.solar_power,
+      this._config.entities.home_power,
+      this._config.entities.battery_soc,
+    ].filter(Boolean);
+    const endings = ["_pv_power", "_load_power", "_battery_percent"];
+    for (const anchor of anchors) {
+      const ending = endings.find((item) => anchor.endsWith(item));
+      if (!ending) continue;
+      const root = anchor.slice(0, -ending.length);
+      for (const suffix of suffixes) {
+        const candidate = `${root}_${suffix}`;
+        if (this._state(candidate)) return candidate;
+      }
+    }
+    return null;
+  }
+
+  _compactSensor(entityId, fallbackUnit, decimals = 0) {
+    const state = this._state(entityId);
+    const value = this._number(entityId);
+    if (!Number.isFinite(value)) return `-- ${fallbackUnit}`;
+    const unit = (state && state.attributes && state.attributes.unit_of_measurement) || fallbackUnit;
+    return `${value.toFixed(decimals)} ${unit}`;
+  }
+
   _state(entityId) {
     return entityId && this._hass && this._hass.states ? this._hass.states[entityId] : null;
   }
@@ -850,6 +904,13 @@ class AnenjiWallPanel extends HTMLElement {
       .inverter-copy span { font-size: 14px; font-weight: 600; }
       .inverter-copy b { color: var(--blue); font-size: 20px; }
       .energy-node.unavailable { opacity: .45; }
+      .telemetry-chip { position: absolute; z-index: 2; width: 148px; display: grid; gap: 4px; pointer-events: none; }
+      .telemetry-chip span { color: #718396; font-size: 10px; font-weight: 800; letter-spacing: .07em; }
+      .telemetry-chip strong { color: #c7d4df; font-size: 13px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+      .telemetry-grid { top: 35px; left: 25px; text-align: left; }
+      .telemetry-solar { top: 35px; right: 25px; text-align: right; }
+      .telemetry-battery { bottom: 38px; left: 25px; text-align: left; }
+      .telemetry-home { bottom: 38px; right: 25px; text-align: right; }
       .flow { position: absolute; z-index: 1; color: #637587; opacity: .32; overflow: hidden; display: flex; align-items: center; justify-content: space-around; font-size: 33px; font-weight: 900; }
       .flow span { display: block; line-height: 1; }
       .flow.active { opacity: 1; text-shadow: 0 0 10px currentColor; }
@@ -1046,6 +1107,15 @@ class AnenjiWallPanelEditor extends HTMLElement {
             ${this._entityField("Battery discharged today", "entities.battery_discharge_today", ["sensor"])}
           </div>
           <div class="hint">Combined grid power should contain Grid to Battery + Grid to Load. Battery Power is the inverter's net battery flow, so charging from solar and grid is already combined. If it is empty, the card estimates battery flow as Solar + Grid − Home.</div>
+          <div class="grid">
+            ${this._entityField("Corner: grid voltage", "entities.grid_voltage", ["sensor"])}
+            ${this._entityField("Corner: grid frequency", "entities.grid_frequency", ["sensor"])}
+            ${this._entityField("Corner: PV voltage", "entities.pv_voltage", ["sensor"])}
+            ${this._entityField("Corner: solar energy today", "entities.solar_energy_today", ["sensor"])}
+            ${this._entityField("Corner: battery current", "entities.battery_current", ["sensor"])}
+            ${this._entityField("Corner: home energy today", "entities.home_energy_today", ["sensor"])}
+          </div>
+          <div class="hint">Corner telemetry is auto-detected from the Anenji entity prefix when possible. Use these optional fields only if a value stays unavailable.</div>
         `)}
 
         ${this._section("outlets", "Outlets", this._config.outlets.map((item, index) => `
