@@ -36,7 +36,7 @@ class AnenjiWallPanel extends HTMLElement {
       p1s: {},
       battery_capacity_kwh: "",
       grid_cutoff_soc: 20,
-      thresholds: { active_power: 20, grid_noise: 0, battery_low: 20 },
+      thresholds: { active_power: 20, grid_noise: 30, battery_low: 20 },
     };
   }
 
@@ -55,7 +55,7 @@ class AnenjiWallPanel extends HTMLElement {
       p1s: {},
       thresholds: {
         active_power: 20,
-        grid_noise: 0,
+        grid_noise: 30,
         battery_low: 20,
       },
       ...config,
@@ -336,10 +336,9 @@ class AnenjiWallPanel extends HTMLElement {
     const gridWatts = this._powerToWatts(e.grid_power, grid);
     const homeWatts = this._powerToWatts(e.home_power, home);
     const gridNoise = Math.max(0, Number(this._config.thresholds.grid_noise) || 0);
-    const effectiveGridWatts = Number.isFinite(gridWatts) && Math.abs(gridWatts) < gridNoise ? 0 : gridWatts;
     let batteryPower = NaN;
-    if ([solarWatts, effectiveGridWatts, homeWatts].every(Number.isFinite)) {
-      batteryPower = solarWatts + effectiveGridWatts - homeWatts;
+    if ([solarWatts, gridWatts, homeWatts].every(Number.isFinite)) {
+      batteryPower = solarWatts + gridWatts - homeWatts;
     } else if (Number.isFinite(directBatteryPower)) {
       batteryPower = this._powerToWatts(e.battery_power, directBatteryPower);
     }
@@ -1274,7 +1273,7 @@ class AnenjiWallPanelEditor extends HTMLElement {
           </div>
           <div class="grid">
             ${this._numberField("Flow glow threshold (W)", "thresholds.active_power", 0, 1000)}
-            ${this._numberField("Ignore grid below (W)", "thresholds.grid_noise", 0, 1000)}
+            ${this._numberField("Grid flow threshold (W)", "thresholds.grid_noise", 0, 1000)}
             ${this._numberField("Low battery threshold (%)", "thresholds.battery_low", 0, 100)}
           </div>
         `)}
