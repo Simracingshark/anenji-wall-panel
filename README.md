@@ -34,4 +34,8 @@ Copy `anenji-wall-panel.js` to `/config/www/`, register `/local/anenji-wall-pane
 
 - **Wall tablet (901–1199 px):** tuned for a Samsung P3113 in 1024×600 landscape orientation, with a fixed one-screen layout.
 - **Desktop (1200 px and wider):** taller centered dashboard with a maximum content width so the energy map does not stretch excessively.
-- **Phone (up to 900 px):** full vertical dashboard with the energy map, summaries, outlets/P1S, and radio; normal page scrolling is enabled.
+- **Phone (up to 900 px):** full vertical dashboard with a compact cross-shaped energy map, directional flow arrows, summaries, outlets/P1S, and radio; normal page scrolling is enabled.
+
+## Appearance
+
+The visual editor provides **Auto (Home Assistant)**, **Dark**, and **Light** theme modes. Auto follows the active Home Assistant theme, while Dark and Light can be used to force the card appearance independently.
