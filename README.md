@@ -30,6 +30,8 @@ For Bambu P1S, select only the printer's `Print Status` sensor. The card derives
 
 Copy `anenji-wall-panel.js` to `/config/www/`, register `/local/anenji-wall-panel.js` as a JavaScript module, then use `dashboard.example.yaml` in a Manual card.
 
-## Tablet target
+## Responsive layouts
 
-The card is tuned for a Samsung P3113 in landscape orientation. Its maximum height is 500 px so the Home Assistant app bar and Lovelace spacing do not cause vertical scrolling.
+- **Wall tablet (901–1199 px):** tuned for a Samsung P3113 in 1024×600 landscape orientation, with a fixed one-screen layout.
+- **Desktop (1200 px and wider):** taller centered dashboard with a maximum content width so the energy map does not stretch excessively.
+- **Phone (up to 900 px):** full vertical dashboard with the energy map, summaries, outlets/P1S, and radio; normal page scrolling is enabled.
