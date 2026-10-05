@@ -724,12 +724,8 @@ class AnenjiWallPanel extends HTMLElement {
 
   _inverterSecondary() {
     const e = this._config.entities;
-    const voltage = this._number(e.battery_voltage);
     const temperature = this._number(e.inverter_temperature);
-    const details = [];
-    if (Number.isFinite(voltage)) details.push(`${voltage.toFixed(1)} V`);
-    if (Number.isFinite(temperature)) details.push(`${Math.round(temperature)} °C`);
-    if (details.length) return details.join(" • ");
+    if (Number.isFinite(temperature)) return `INVERTER ${Math.round(temperature)} °C`;
     const home = this._state(e.home_power);
     return home && home.state !== "unavailable" ? "Online" : "Offline";
   }
