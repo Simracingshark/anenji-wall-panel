@@ -529,11 +529,9 @@ class AnenjiWallPanel extends HTMLElement {
     this.$("radio-volume").style.setProperty("--volume", `${volume}%`);
     this._setText("volume-value", `${Math.round(volume)}%`);
 
-    const current = String(rawStationName).toLowerCase();
+    const activeStationIndex = activeStation ? configuredStations.indexOf(activeStation) : -1;
     this.shadowRoot.querySelectorAll("[data-station-index]").forEach((button) => {
-      const item = radio.stations && radio.stations[Number(button.dataset.stationIndex)];
-      const match = item && (item.option || item.match || item.name);
-      button.classList.toggle("active", Boolean(match && current.includes(String(match).toLowerCase())));
+      button.classList.toggle("active", Number(button.dataset.stationIndex) === activeStationIndex);
     });
   }
 
@@ -854,10 +852,7 @@ class AnenjiWallPanel extends HTMLElement {
       .energy-node.unavailable { opacity: .45; }
       .flow { position: absolute; z-index: 1; color: #637587; opacity: .32; overflow: hidden; display: flex; align-items: center; justify-content: space-around; font-size: 33px; font-weight: 900; }
       .flow span { display: block; line-height: 1; }
-      .flow.active { opacity: 1; }
-      .flow.active span { animation: pulse-arrow 1.1s infinite; }
-      .flow.active span:nth-child(2) { animation-delay: .18s; }
-      .flow.active span:nth-child(3) { animation-delay: .36s; }
+      .flow.active { opacity: 1; text-shadow: 0 0 10px currentColor; }
       .flow.reverse { flex-direction: row-reverse; }
       .flow.horizontal.reverse span { transform: rotate(180deg); }
       .flow.vertical { flex-direction: column; }
@@ -865,13 +860,13 @@ class AnenjiWallPanel extends HTMLElement {
       .flow.vertical.reverse { flex-direction: column-reverse; }
       .flow.vertical.reverse span { transform: rotate(-90deg); }
       @media (max-width: 1100px) {
+        .flow { font-size: 24px; }
         .flow span:nth-child(n+2) { display: none; }
       }
       .solar-flow { color: var(--amber); width: 38px; height: calc(50% - 157px); top: 104px; left: calc(50% - 19px); }
       .grid-flow { color: var(--blue); height: 38px; width: calc(50% - 268px); top: calc(50% - 19px); left: 178px; }
       .home-flow { color: #eaf3fb; height: 38px; width: calc(50% - 268px); top: calc(50% - 19px); right: 178px; }
       .battery-flow { color: var(--green); width: 38px; height: calc(50% - 163px); bottom: 110px; left: calc(50% - 19px); }
-      @keyframes pulse-arrow { 0%, 100% { opacity: .2; } 45% { opacity: 1; } }
       .energy-summary { border-top: 1px solid #2c3b49; display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 8px; }
       .summary-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: none; border: 0; text-align: left; cursor: pointer; min-width: 0; }
       .summary-item + .summary-item { border-left: 1px solid #344454; }
@@ -910,8 +905,8 @@ class AnenjiWallPanel extends HTMLElement {
       .p1s-progress::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #111a23; }
       .p1s-progress strong { position: relative; z-index: 1; color: #f4f7fa; font-size: 17px; }
       .p1s-details { min-width: 0; display: grid; gap: 7px; }
-      .p1s-title-row { display: flex; align-items: center; justify-content: space-between; gap: 7px; min-width: 0; }
-      .p1s-title-row > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+      .p1s-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 7px; min-width: 0; }
+      .p1s-title-row > strong { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; font-size: 14px; line-height: 1.08; }
       #p1s-status { flex: 0 0 auto; color: var(--muted); border: 1px solid #3d4d5c; border-radius: 999px; padding: 2px 7px; font-size: 10px; font-weight: 800; }
       #p1s-status.active { color: var(--green); border-color: rgba(63, 234, 135, .55); }
       .p1s-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; }
