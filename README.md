@@ -20,7 +20,7 @@ It combines:
 5. Open a dashboard, select **Add card**, and choose **Anenji Wall Panel**.
 6. Select the required entities in the visual editor. YAML is not required.
 
-The editor uses one setting per row so it remains readable inside Home Assistant's narrow card-editor panel. Battery flow and ETA use the common power balance `Solar + Combined Grid − Home`; the optional `Battery Power` entity is only a fallback when one of those readings is unavailable. Battery ETA uses the configured capacity and grid-switch percentage. `Ignore grid below (W)` filters only small grid measurement noise and never suppresses real low-power battery discharge.
+The editor uses one setting per row so it remains readable inside Home Assistant's narrow card-editor panel. Battery flow and ETA use the common power balance `Solar + Combined Grid − Home`; the optional `Battery Power` entity is only a fallback when one of those readings is unavailable. Battery ETA uses the configured capacity and grid-switch percentage. `Grid flow threshold (W)` affects only the visual grid arrow; the complete grid reading is always retained in the ETA calculation.
 
 For Bambu P1S, select only the printer's `Print Status` sensor. The card derives the matching task, progress, layers, remaining time, nozzle and bed temperatures, speed selector, chamber light, pause/resume, and stop entities from the same entity prefix. Stop requires a deliberate 0.9-second hold.
 
