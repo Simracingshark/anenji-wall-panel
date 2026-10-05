@@ -20,7 +20,7 @@ class AnenjiWallPanel extends HTMLElement {
       theme_mode: "auto",
       entities: {},
       outlets: [
-        { name: "Desk", icon: "mdi:desk-lamp" },
+        { name: "Chandelier", icon: "mdi:chandelier" },
         { name: "Printer", icon: "mdi:printer-3d" },
         { name: "Speaker", icon: "mdi:speaker" },
         { name: "Spare", icon: "mdi:power-socket-eu" },
@@ -60,7 +60,11 @@ class AnenjiWallPanel extends HTMLElement {
       },
       ...config,
       entities: { ...(config.entities || {}) },
-      outlets: Array.isArray(config.outlets) ? config.outlets.slice(0, 4) : [],
+      outlets: Array.isArray(config.outlets) ? config.outlets.slice(0, 4).map((item) =>
+        item && item.name === "Desk" && item.icon === "mdi:desk-lamp"
+          ? { ...item, name: "Chandelier", icon: "mdi:chandelier" }
+          : item
+      ) : [],
       radio: { ...(config.radio || {}) },
       p1s: { ...(config.p1s || {}) },
       thresholds: {
@@ -261,7 +265,7 @@ class AnenjiWallPanel extends HTMLElement {
   _buildOutlets() {
     const root = this.$("outlets");
     const fallback = [
-      { name: "Desk", icon: "mdi:desk-lamp" },
+      { name: "Chandelier", icon: "mdi:chandelier" },
       { name: "Printer", icon: "mdi:printer-3d" },
       { name: "Speaker", icon: "mdi:speaker" },
       { name: "Spare", icon: "mdi:power-socket-eu" },
@@ -1017,7 +1021,7 @@ class AnenjiWallPanel extends HTMLElement {
       .inverter-copy b { color: var(--blue); font-size: 20px; }
       .energy-node.unavailable { opacity: .45; }
       .telemetry-chip { position: absolute; z-index: 2; width: 160px; display: grid; gap: 4px; pointer-events: none; }
-      .telemetry-chip span { color: #718396; font-size: 11px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
+      .telemetry-chip span { color: #718396; font-size: 12px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
       .telemetry-chip strong { color: var(--text); font-size: 14px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
       .telemetry-pv-lines { display: grid; gap: 3px; }
       .telemetry-pv-lines b { color: inherit; font: inherit; }
@@ -1046,7 +1050,7 @@ class AnenjiWallPanel extends HTMLElement {
       .summary-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: none; border: 0; text-align: left; cursor: pointer; min-width: 0; }
       .summary-item + .summary-item { border-left: 1px solid var(--line); }
       .summary-item ha-icon { width: 27px; height: 27px; flex: 0 0 27px; }
-      .summary-item span { display: block; color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
+      .summary-item span { display: block; color: var(--muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
       .summary-item strong { display: block; color: var(--text); margin-top: 3px; font-size: 17px; white-space: nowrap; }
       .summary-item.green ha-icon { color: var(--green); }
       .summary-item.amber ha-icon { color: var(--amber); }
@@ -1132,9 +1136,9 @@ class AnenjiWallPanel extends HTMLElement {
         .inverter-copy strong { font-size: 17px; }
         .inverter-copy span { font-size: 15px; }
         .inverter-copy b { font-size: 22px; }
-        .telemetry-chip span { font-size: 12px; }
+        .telemetry-chip span { font-size: 13px; }
         .telemetry-chip strong { font-size: 15px; }
-        .summary-item span { font-size: 12px; }
+        .summary-item span { font-size: 13px; }
         .summary-item strong { font-size: 19px; }
       }
       @media (max-width: 900px) {
@@ -1167,7 +1171,7 @@ class AnenjiWallPanel extends HTMLElement {
         .home-flow { width: 20px; height: 34px; top: 209px; right: calc(50% - clamp(83px, 23vw, 96px)); }
         .battery-flow { width: 34px; height: 60px; top: 282px; bottom: auto; left: calc(50% - 17px); }
         .telemetry-chip { width: calc(50% - 24px); gap: 3px; }
-        .telemetry-chip span { font-size: 10px; }
+        .telemetry-chip span { font-size: 11px; }
         .telemetry-chip strong { font-size: 13px; }
         .telemetry-grid { top: 458px; left: 15px; }
         .telemetry-solar { top: 458px; right: 15px; }
@@ -1178,7 +1182,7 @@ class AnenjiWallPanel extends HTMLElement {
         .summary-item:nth-child(even) { border-left: 1px solid var(--line) !important; }
         .summary-item:nth-child(n+3) { border-top: 1px solid var(--line) !important; }
         .summary-item ha-icon { width: 29px; height: 29px; flex-basis: 29px; }
-        .summary-item span { font-size: 11px; }
+        .summary-item span { font-size: 12px; }
         .summary-item strong { font-size: 18px; }
         .side-column { grid-template-rows: 184px 335px; gap: 9px; }
         .radio-panel { padding: 12px 14px 11px; }
@@ -1190,7 +1194,8 @@ class AnenjiWallPanel extends HTMLElement {
         .status-strip { font-size: 14px; }
         .energy-node > ha-icon { left: 8px; width: 25px; height: 25px; }
         .grid strong, .home strong { font-size: 18px; }
-        .telemetry-chip span { font-size: 9px; }
+        .telemetry-chip span { font-size: 10px; }
+        .summary-item span { font-size: 11px; }
         .telemetry-chip strong { font-size: 12px; }
         .summary-item { gap: 6px; padding-left: 6px; padding-right: 6px; }
         .summary-item strong { font-size: 16px; }
@@ -1220,7 +1225,11 @@ class AnenjiWallPanelEditor extends HTMLElement {
       ...stub,
       ...incoming,
       entities: { ...stub.entities, ...(incoming.entities || {}) },
-      outlets: this._normaliseRows(incoming.outlets, stub.outlets, 4),
+      outlets: this._normaliseRows(incoming.outlets, stub.outlets, 4).map((item) =>
+        item && item.name === "Desk" && item.icon === "mdi:desk-lamp"
+          ? { ...item, name: "Chandelier", icon: "mdi:chandelier" }
+          : item
+      ),
       radio: {
         ...stub.radio,
         ...(incoming.radio || {}),
