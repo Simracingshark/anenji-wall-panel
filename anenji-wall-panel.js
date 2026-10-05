@@ -36,7 +36,7 @@ class AnenjiWallPanel extends HTMLElement {
       p1s: {},
       battery_capacity_kwh: "",
       grid_cutoff_soc: 20,
-      thresholds: { active_power: 20, battery_low: 20 },
+      thresholds: { active_power: 20, grid_noise: 30, battery_low: 20 },
     };
   }
 
@@ -55,6 +55,7 @@ class AnenjiWallPanel extends HTMLElement {
       p1s: {},
       thresholds: {
         active_power: 20,
+        grid_noise: 30,
         battery_low: 20,
       },
       ...config,
@@ -331,13 +332,16 @@ class AnenjiWallPanel extends HTMLElement {
     const home = this._number(e.home_power);
     const battery = this._number(e.battery_soc);
     const directBatteryPower = this._number(e.battery_power);
+    const solarWatts = this._powerToWatts(e.solar_power, solar);
+    const gridWatts = this._powerToWatts(e.grid_power, grid);
+    const homeWatts = this._powerToWatts(e.home_power, home);
+    const gridNoise = Math.max(0, Number(this._config.thresholds.grid_noise) || 0);
+    const effectiveGridWatts = Number.isFinite(gridWatts) && Math.abs(gridWatts) < gridNoise ? 0 : gridWatts;
     let batteryPower = NaN;
-    if (Number.isFinite(directBatteryPower)) {
+    if ([solarWatts, effectiveGridWatts, homeWatts].every(Number.isFinite)) {
+      batteryPower = solarWatts + effectiveGridWatts - homeWatts;
+    } else if (Number.isFinite(directBatteryPower)) {
       batteryPower = this._powerToWatts(e.battery_power, directBatteryPower);
-    } else if ([solar, grid, home].every(Number.isFinite)) {
-      batteryPower = this._powerToWatts(e.solar_power, solar)
-        + this._powerToWatts(e.grid_power, grid)
-        - this._powerToWatts(e.home_power, home);
     }
 
     this._setPower("solar", solar, e.solar_power);
@@ -379,9 +383,9 @@ class AnenjiWallPanel extends HTMLElement {
     this._setText("telemetry-battery", `${this._compactSensor(batteryVoltageEntity, "V", 1)} • ${batteryCurrentText}`);
     this._setText("telemetry-home", this._compactSensor(homeTodayEntity, "kWh", 1));
 
-    this._setFlow("solar-flow", solar > this._config.thresholds.active_power, false);
-    this._setFlow("home-flow", home > this._config.thresholds.active_power, false);
-    this._setFlow("grid-flow", Math.abs(grid) > this._config.thresholds.active_power, grid < 0);
+    this._setFlow("solar-flow", solarWatts > this._config.thresholds.active_power, false);
+    this._setFlow("home-flow", homeWatts > this._config.thresholds.active_power, false);
+    this._setFlow("grid-flow", Math.abs(gridWatts) >= gridNoise && Math.abs(gridWatts) > 0, gridWatts < 0);
     this._setFlow("battery-flow", Math.abs(batteryPower) > this._config.thresholds.active_power, batteryPower < 0);
 
     this._updateOutlets();
@@ -737,19 +741,19 @@ class AnenjiWallPanel extends HTMLElement {
     const etaLabel = Number.isFinite(cutoff) ? `ETA • GRID AT ${Math.round(cutoff)}%` : "BATTERY ETA";
 
     if (!Number.isFinite(batteryPowerWatts)) {
-      return { flow: "POWER --", etaLabel, eta: "--" };
+      return { flow: "POWER --", etaLabel, eta: "Waiting for data" };
     }
 
     const powerText = this._humanPower(Math.abs(batteryPowerWatts), "W");
     const formattedPower = `${powerText.value} ${powerText.unit}`;
     const powerKw = batteryPowerWatts / 1000;
-    if (Math.abs(powerKw) < 0.02) return { flow: "IDLE", etaLabel, eta: "--" };
+    if (Math.abs(batteryPowerWatts) < 1) return { flow: "IDLE", etaLabel, eta: "Battery idle" };
 
     if (!Number.isFinite(soc) || !Number.isFinite(capacity) || capacity <= 0) {
       return {
         flow: powerKw > 0 ? `CHARGE ${formattedPower}` : `TO HOME ${formattedPower}`,
         etaLabel,
-        eta: "--",
+        eta: !Number.isFinite(capacity) || capacity <= 0 ? "Set capacity" : "Waiting for SOC",
       };
     }
 
@@ -970,7 +974,7 @@ class AnenjiWallPanel extends HTMLElement {
       .status-strip { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 19px; font-weight: 700; }
       .status-strip ha-icon { width: 25px; height: 25px; }
       .theme-toggle { position: relative; width: 34px; height: 34px; display: block; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--control-bg); cursor: pointer; }
-      .theme-toggle ha-icon { position: absolute; top: 50%; left: 50%; width: 22px; height: 22px; margin: 0; line-height: 0; transform: translate(-50%, -50%); color: var(--amber); }
+      .theme-toggle ha-icon { position: absolute; top: calc(50% - 3px); left: 50%; width: 22px; height: 22px; margin: 0; line-height: 0; transform: translate(-50%, -50%); color: var(--amber); }
       .theme-toggle[data-mode="dark"] ha-icon { color: #86bdf5; }
       .theme-toggle[data-mode="auto"] ha-icon { color: var(--muted); }
       .divider { width: 1px; height: 28px; background: var(--line); margin: 0 6px; }
@@ -1102,8 +1106,8 @@ class AnenjiWallPanel extends HTMLElement {
       .round { display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
       .round ha-icon { width: 31px; height: 31px; }
       .round.secondary { width: 43px; height: 43px; border: 1px solid var(--line); background: var(--control-raised); }
-      .round.primary { width: 56px; height: 56px; border: 1px solid #52aef1; background: linear-gradient(145deg, #21a8f4, #0875df); box-shadow: 0 7px 20px rgba(0, 126, 235, .24); }
-      .round.primary ha-icon { width: 38px; height: 38px; }
+      .round.primary { position: relative; width: 56px; height: 56px; border: 1px solid #52aef1; background: linear-gradient(145deg, #21a8f4, #0875df); box-shadow: 0 7px 20px rgba(0, 126, 235, .24); }
+      .round.primary ha-icon { position: absolute; top: calc(50% + 3px); left: 50%; width: 38px; height: 38px; margin: 0; line-height: 0; transform: translate(-50%, -50%); }
       .volume-row { display: grid; grid-template-columns: 24px 1fr 39px; align-items: center; gap: 9px; }
       .volume-row ha-icon { width: 23px; height: 23px; }
       .volume-row span { color: var(--text); font-size: 14px; font-weight: 700; text-align: right; }
@@ -1269,7 +1273,8 @@ class AnenjiWallPanelEditor extends HTMLElement {
             ${this._numberField("Switch to grid at (%)", "grid_cutoff_soc", 0, 100)}
           </div>
           <div class="grid">
-            ${this._numberField("Active flow threshold (W)", "thresholds.active_power", 0, 1000)}
+            ${this._numberField("Flow glow threshold (W)", "thresholds.active_power", 0, 1000)}
+            ${this._numberField("Ignore grid below (W)", "thresholds.grid_noise", 0, 1000)}
             ${this._numberField("Low battery threshold (%)", "thresholds.battery_low", 0, 100)}
           </div>
         `)}
