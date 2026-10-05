@@ -1,26 +1,30 @@
 type: custom:anenji-wall-panel
 title: ANENJI 11 kW
 
-# Replace every example entity with an entity from your Home Assistant.
-entities:
-  solar_power: sensor.solar_power
-  grid_power: sensor.grid_total_power
-  home_power: sensor.home_load_power
-  battery_soc: sensor.battery_state_of_charge
-  battery_charge_today: sensor.battery_charge_energy_today
-  battery_discharge_today: sensor.battery_discharge_energy_today
-  grid_energy_today: sensor.grid_import_energy_today
+# Optional room temperature shown in the top-right corner.
+# indoor_temperature: sensor.room_temperature
 
-  # Optional sensors:
-  # battery_power: sensor.battery_power
-  # battery_voltage: sensor.battery_voltage
-  # load_percent: sensor.inverter_load_percent
-  # inverter_temperature: sensor.inverter_temperature
+entities:
+  solar_power: sensor.anenji_anj_11kw_48v_wifi_p_pv_power
+  # One combined value: Grid to Battery + Grid to Load.
+  grid_power: sensor.anenji_grid_total
+  home_power: sensor.anenji_anj_11kw_48v_wifi_p_load_power
+  battery_soc: sensor.anenji_anj_11kw_48v_wifi_p_battery_percent
+  battery_charge_today: sensor.anenji_anj_11kw_48v_wifi_p_estimated_battery_charge_energy_today
+  battery_discharge_today: sensor.anenji_anj_11kw_48v_wifi_p_estimated_battery_discharge_energy_today
+  grid_energy_today: sensor.anenji_anj_11kw_48v_wifi_p_estimated_grid_import_energy_today
+
+  # Add these when the exact entity IDs are known.
+  # battery_power: sensor.anenji_battery_power
+  # battery_voltage: sensor.anenji_battery_voltage
+  # load_percent: sensor.anenji_load_percent
+  # inverter_temperature: sensor.anenji_inverter_temperature
 
 outlets:
-  - name: Desk
+  # Replace these four entity IDs with the real switches from your Home Assistant.
+  - name: Chandelier
     entity: switch.desk_outlet
-    icon: mdi:desk-lamp
+    icon: mdi:chandelier
   - name: Printer
     entity: switch.printer_outlet
     icon: mdi:printer-3d
@@ -32,25 +36,25 @@ outlets:
     icon: mdi:power-socket-eu
 
 radio:
-  media_player: media_player.wifi_radio
-  current_station: sensor.wifi_radio_current_station
-  playback_status: sensor.wifi_radio_playback_status
-  volume: number.wifi_radio_volume
-  play_pause: button.wifi_radio_play_pause
-  previous: button.wifi_radio_previous_station
-  next: button.wifi_radio_next_station
-  station_select: select.wifi_radio_station
-  play_selected: button.wifi_radio_play_selected
+  media_player: media_player.wifi_speaker_wifi_speaker
+  current_station: sensor.ihor_s_room_wifi_speaker_current_station
+  playback_status: sensor.ihor_s_room_wifi_speaker_playback_status
+  volume: number.ihor_s_room_wifi_speaker_volume
+  play_pause: button.ihor_s_room_wifi_speaker_play_pause
+  previous: button.ihor_s_room_wifi_speaker_previous_station
+  next: button.ihor_s_room_wifi_speaker_next_station
+  station_select: select.ihor_s_room_wifi_speaker_station
+  play_selected: button.ihor_s_room_wifi_speaker_play_selected
 
   stations:
-    - name: STATION 1
-      option: Station 1
-    - name: STATION 2
-      option: Station 2
-    - name: STATION 3
-      option: Station 3
-    - name: STATION 4
-      option: Station 4
+    - name: HIT FM
+      option: Hit FM
+    - name: HIT BEST
+      option: Hit FM - Найбільші хіти
+    - name: HIT UA
+      option: Hit FM - Українські хіти
+    - name: SIM RADIO
+      option: Simulator Radio
 
 thresholds:
   active_power: 20
