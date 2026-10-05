@@ -1027,10 +1027,74 @@ class AnenjiWallPanel extends HTMLElement {
       .station-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; min-height: 0; }
       .station { color: #f4f7fa !important; border: 1px solid #394957; border-radius: 9px; background: #151f29; font-size: 12px; font-weight: 800; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; }
       .station.active { border-color: #159ff0; background: linear-gradient(145deg, #148ee8, #0967c7); }
+      @media (min-width: 1200px) {
+        ha-card { height: min(580px, calc(100vh - 92px)); min-height: 540px; }
+        .shell { width: min(100%, 1400px); margin: 0 auto; padding: 10px 20px 12px; }
+        .topbar { height: 48px; }
+        .dashboard { height: calc(100% - 48px); gap: 12px; }
+        .energy-panel { grid-template-rows: minmax(0, 1fr) 92px; }
+        .side-column { grid-template-rows: 200px minmax(0, 1fr); gap: 12px; }
+        .utility-panel { padding: 11px 14px 12px; }
+        .radio-panel { padding: 14px 17px 13px; }
+        .energy-node span { font-size: 15px; }
+        .energy-node strong { font-size: 27px; }
+        .inverter-copy strong { font-size: 17px; }
+        .inverter-copy span { font-size: 15px; }
+        .inverter-copy b { font-size: 22px; }
+        .telemetry-chip span { font-size: 12px; }
+        .telemetry-chip strong { font-size: 15px; }
+        .summary-item span { font-size: 12px; }
+        .summary-item strong { font-size: 19px; }
+      }
       @media (max-width: 900px) {
-        .shell { padding-left: 8px; padding-right: 8px; }
-        .dashboard { grid-template-columns: minmax(0, 1fr); }
-        .energy-panel { display: none; }
+        ha-card { height: auto; min-height: 0; overflow: visible; border-radius: 0; }
+        .shell { height: auto; padding: 7px; }
+        .topbar { height: 43px; padding: 0 8px; }
+        .datetime { gap: 12px; }
+        #clock { font-size: 27px; }
+        #date { font-size: 15px; }
+        .status-strip { gap: 7px; font-size: 16px; }
+        .status-strip ha-icon { width: 22px; height: 22px; }
+        .divider { height: 23px; margin: 0 3px; }
+        .dashboard { height: auto; grid-template-columns: minmax(0, 1fr); gap: 9px; }
+        .energy-panel { display: grid; grid-template-rows: 565px auto; min-height: 0; }
+        .energy-map { height: 565px; }
+        .solar { width: calc(100% - 32px); max-width: 280px; height: 86px; top: 12px; left: 50%; transform: translateX(-50%); }
+        .grid { width: calc(50% - 20px); height: 92px; top: 112px; left: 12px; transform: none; padding-left: 10px; padding-right: 10px; }
+        .home { width: calc(50% - 20px); height: 92px; top: 112px; right: 12px; transform: none; padding-left: 10px; padding-right: 10px; }
+        .grid strong, .home strong { font-size: 21px; }
+        .grid small, .home small { font-size: 14px; }
+        .inverter { width: calc(100% - 64px); max-width: 290px; height: 100px; top: 218px; left: 50%; transform: translateX(-50%); }
+        .battery { width: calc(100% - 32px); max-width: 260px; height: 92px; top: 332px; bottom: auto; left: 50%; transform: translateX(-50%); }
+        .flow { display: none; }
+        .telemetry-chip { width: calc(50% - 24px); gap: 3px; }
+        .telemetry-chip span { font-size: 10px; }
+        .telemetry-chip strong { font-size: 13px; }
+        .telemetry-grid { top: 447px; left: 15px; }
+        .telemetry-solar { top: 447px; right: 15px; }
+        .telemetry-battery { top: 510px; bottom: auto; left: 15px; }
+        .telemetry-home { top: 510px; bottom: auto; right: 15px; }
+        .energy-summary { min-height: 148px; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); padding: 7px 9px; }
+        .summary-item { padding: 8px 9px; border: 0 !important; }
+        .summary-item:nth-child(even) { border-left: 1px solid #344454 !important; }
+        .summary-item:nth-child(n+3) { border-top: 1px solid #344454 !important; }
+        .summary-item ha-icon { width: 29px; height: 29px; flex-basis: 29px; }
+        .summary-item span { font-size: 11px; }
+        .summary-item strong { font-size: 18px; }
+        .side-column { grid-template-rows: 184px 335px; gap: 9px; }
+        .radio-panel { padding: 12px 14px 11px; }
+        .station { min-height: 38px; font-size: 13px; }
+      }
+      @media (max-width: 420px) {
+        .shell { padding-left: 5px; padding-right: 5px; }
+        #date { font-size: 13px; }
+        .status-strip { font-size: 14px; }
+        .energy-node > ha-icon { left: 8px; width: 25px; height: 25px; }
+        .grid strong, .home strong { font-size: 19px; }
+        .telemetry-chip span { font-size: 9px; }
+        .telemetry-chip strong { font-size: 12px; }
+        .summary-item { gap: 6px; padding-left: 6px; padding-right: 6px; }
+        .summary-item strong { font-size: 16px; }
       }
     `;
   }
