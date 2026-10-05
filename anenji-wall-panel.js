@@ -64,9 +64,10 @@ class AnenjiWallPanel extends HTMLElement {
       radio: { ...(config.radio || {}) },
       p1s: { ...(config.p1s || {}) },
       thresholds: {
-        active_power: 20,
+        grid_noise: 30,
         battery_low: 20,
         ...(config.thresholds || {}),
+        active_power: 20,
       },
     };
 
@@ -737,34 +738,36 @@ class AnenjiWallPanel extends HTMLElement {
     const configuredCutoff = Number(this._config.grid_cutoff_soc);
     const cutoff = Number.isFinite(configuredCutoff) ? configuredCutoff : NaN;
     const capacity = Number(this._config.battery_capacity_kwh);
-    const etaLabel = Number.isFinite(cutoff) ? `ETA • GRID AT ${Math.round(cutoff)}%` : "BATTERY ETA";
+    const cutoffLabel = Number.isFinite(cutoff) ? ` • ${Math.round(cutoff)}%` : "";
+    const defaultLabel = "BATTERY ETA";
 
     if (!Number.isFinite(batteryPowerWatts)) {
-      return { flow: "POWER --", etaLabel, eta: "Waiting for data" };
+      return { flow: "POWER --", etaLabel: defaultLabel, eta: "Waiting for data" };
     }
 
     const powerText = this._humanPower(Math.abs(batteryPowerWatts), "W");
     const formattedPower = `${powerText.value} ${powerText.unit}`;
     const powerKw = batteryPowerWatts / 1000;
-    if (Math.abs(batteryPowerWatts) < 1) return { flow: "IDLE", etaLabel, eta: "Battery idle" };
+    if (Math.abs(batteryPowerWatts) < 1) return { flow: "IDLE", etaLabel: defaultLabel, eta: "Battery idle" };
 
     if (!Number.isFinite(soc) || !Number.isFinite(capacity) || capacity <= 0) {
       return {
         flow: powerKw > 0 ? `CHARGE ${formattedPower}` : `TO HOME ${formattedPower}`,
-        etaLabel,
+        etaLabel: defaultLabel,
         eta: !Number.isFinite(capacity) || capacity <= 0 ? "Set capacity" : "Waiting for SOC",
       };
     }
 
     if (powerKw > 0) {
       const energyToFull = Math.max(0, (100 - soc) / 100 * capacity);
-      return { flow: `CHARGE ${formattedPower}`, etaLabel, eta: `Full ${this._formatDuration(energyToFull / powerKw)}` };
+      return { flow: `CHARGE ${formattedPower}`, etaLabel: "ETA TO FULL", eta: this._formatDuration(energyToFull / powerKw) };
     }
 
     const effectiveCutoff = Number.isFinite(cutoff) ? cutoff : 0;
-    if (soc <= effectiveCutoff) return { flow: `TO HOME ${formattedPower}`, etaLabel, eta: "Grid now" };
+    const etaLabel = `ETA TO GRID${cutoffLabel}`;
+    if (soc <= effectiveCutoff) return { flow: `TO HOME ${formattedPower}`, etaLabel, eta: "Now" };
     const availableEnergy = Math.max(0, (soc - effectiveCutoff) / 100 * capacity);
-    return { flow: `TO HOME ${formattedPower}`, etaLabel, eta: `Grid ${this._formatDuration(availableEnergy / Math.abs(powerKw))}` };
+    return { flow: `TO HOME ${formattedPower}`, etaLabel, eta: this._formatDuration(availableEnergy / Math.abs(powerKw)) };
   }
 
   _powerToWatts(entityId, value) {
@@ -1272,7 +1275,6 @@ class AnenjiWallPanelEditor extends HTMLElement {
             ${this._numberField("Switch to grid at (%)", "grid_cutoff_soc", 0, 100)}
           </div>
           <div class="grid">
-            ${this._numberField("Flow glow threshold (W)", "thresholds.active_power", 0, 1000)}
             ${this._numberField("Grid flow threshold (W)", "thresholds.grid_noise", 0, 1000)}
             ${this._numberField("Low battery threshold (%)", "thresholds.battery_low", 0, 100)}
           </div>
