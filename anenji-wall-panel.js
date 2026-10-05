@@ -32,6 +32,7 @@ class AnenjiWallPanel extends HTMLElement {
           { name: "STATION 4", option: "" },
         ],
       },
+      p1s: {},
       battery_capacity_kwh: "",
       grid_cutoff_soc: 20,
       thresholds: { active_power: 20, battery_low: 20 },
@@ -49,6 +50,7 @@ class AnenjiWallPanel extends HTMLElement {
       entities: {},
       outlets: [],
       radio: {},
+      p1s: {},
       thresholds: {
         active_power: 20,
         battery_low: 20,
@@ -57,6 +59,7 @@ class AnenjiWallPanel extends HTMLElement {
       entities: { ...(config.entities || {}) },
       outlets: Array.isArray(config.outlets) ? config.outlets.slice(0, 4) : [],
       radio: { ...(config.radio || {}) },
+      p1s: { ...(config.p1s || {}) },
       thresholds: {
         active_power: 20,
         battery_low: 20,
@@ -85,7 +88,9 @@ class AnenjiWallPanel extends HTMLElement {
 
   disconnectedCallback() {
     if (this._clockTimer) clearInterval(this._clockTimer);
+    if (this._p1sStopTimer) clearTimeout(this._p1sStopTimer);
     this._clockTimer = null;
+    this._p1sStopTimer = null;
   }
 
   _build() {
@@ -139,9 +144,39 @@ class AnenjiWallPanel extends HTMLElement {
             </section>
 
             <aside class="side-column">
-              <section class="outlets-panel panel">
-                <h2>OUTLETS</h2>
-                <div id="outlets" class="outlet-grid"></div>
+              <section class="utility-panel panel">
+                <div class="utility-tabs">
+                  <button id="outlets-tab" class="utility-tab active">OUTLETS</button>
+                  <button id="p1s-tab" class="utility-tab">BAMBU P1S <i id="p1s-dot"></i></button>
+                </div>
+                <div id="outlets-view" class="utility-view active">
+                  <div id="outlets" class="outlet-grid"></div>
+                </div>
+                <div id="p1s-view" class="utility-view p1s-view">
+                  <div class="p1s-main">
+                    <div id="p1s-progress-ring" class="p1s-progress"><strong id="p1s-progress">--%</strong></div>
+                    <div class="p1s-details">
+                      <div class="p1s-title-row"><strong id="p1s-task">Bambu P1S</strong><span id="p1s-status">OFFLINE</span></div>
+                      <div class="p1s-metrics">
+                        <span>NOZZLE <b id="p1s-nozzle">--°</b></span>
+                        <span>BED <b id="p1s-bed">--°</b></span>
+                        <span>LAYER <b id="p1s-layer">--/--</b></span>
+                        <span>LEFT <b id="p1s-remaining">--</b></span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="p1s-actions">
+                    <button id="p1s-light" class="p1s-action" aria-label="Chamber light"><ha-icon icon="mdi:lightbulb-outline"></ha-icon></button>
+                    <select id="p1s-speed" aria-label="Printing speed">
+                      <option value="silent">Silent</option>
+                      <option value="standard">Standard</option>
+                      <option value="sport">Sport</option>
+                      <option value="ludicrous">Ludicrous</option>
+                    </select>
+                    <button id="p1s-pause" class="p1s-action" aria-label="Pause or resume"><ha-icon id="p1s-pause-icon" icon="mdi:pause"></ha-icon></button>
+                    <button id="p1s-stop" class="p1s-action danger" aria-label="Hold to stop"><ha-icon icon="mdi:stop"></ha-icon></button>
+                  </div>
+                </div>
               </section>
 
               <section class="radio-panel panel">
@@ -254,6 +289,16 @@ class AnenjiWallPanel extends HTMLElement {
     this.$("radio-prev").addEventListener("click", () => this._transport("previous"));
     this.$("radio-next").addEventListener("click", () => this._transport("next"));
     this.$("radio-volume").addEventListener("change", (event) => this._setVolume(Number(event.target.value)));
+    this.$("outlets-tab").addEventListener("click", () => this._showUtilityView("outlets"));
+    this.$("p1s-tab").addEventListener("click", () => this._showUtilityView("p1s"));
+    this.$("p1s-light").addEventListener("click", () => this._toggleP1sLight());
+    this.$("p1s-speed").addEventListener("change", (event) => this._setP1sSpeed(event.target.value));
+    this.$("p1s-pause").addEventListener("click", () => this._pauseResumeP1s());
+    const stopButton = this.$("p1s-stop");
+    stopButton.addEventListener("pointerdown", (event) => this._startP1sStopHold(event));
+    ["pointerup", "pointerleave", "pointercancel"].forEach((name) => {
+      stopButton.addEventListener(name, () => this._cancelP1sStopHold());
+    });
   }
 
   _update() {
@@ -294,6 +339,7 @@ class AnenjiWallPanel extends HTMLElement {
     this._setFlow("battery-flow", Math.abs(batteryPower) > this._config.thresholds.active_power, batteryPower < 0);
 
     this._updateOutlets();
+    this._updateP1s();
     this._updateRadio();
     this._updateClock();
   }
@@ -329,6 +375,112 @@ class AnenjiWallPanel extends HTMLElement {
       button.classList.toggle("on", Boolean(isOn));
       button.classList.toggle("unavailable", Boolean(item && item.entity && (!state || state.state === "unavailable")));
     });
+  }
+
+  _showUtilityView(view) {
+    const selected = view === "p1s" ? "p1s" : "outlets";
+    ["outlets", "p1s"].forEach((name) => {
+      this.$(`${name}-tab`).classList.toggle("active", name === selected);
+      this.$(`${name}-view`).classList.toggle("active", name === selected);
+    });
+  }
+
+  _p1sEntity(suffix, domain = "sensor") {
+    const p1s = this._config.p1s || {};
+    if (p1s[suffix]) return p1s[suffix];
+    const statusEntity = p1s.print_status;
+    const match = typeof statusEntity === "string" && statusEntity.match(/^sensor\.(.+)_print_status$/);
+    return match ? `${domain}.${match[1]}_${suffix}` : null;
+  }
+
+  _updateP1s() {
+    const statusEntity = this._p1sEntity("print_status");
+    const statusState = this._state(statusEntity);
+    const status = statusState ? String(statusState.state).toLowerCase() : "unavailable";
+    const onlineState = this._state(this._p1sEntity("online", "binary_sensor"));
+    const online = status !== "offline" && status !== "unavailable" && (!onlineState || onlineState.state === "on");
+    const running = ["running", "printing", "prepare", "init"].includes(status);
+    const paused = status === "pause";
+    const active = running || paused;
+
+    const progress = this._number(this._p1sEntity("print_progress"));
+    const safeProgress = Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
+    this._setText("p1s-progress", Number.isFinite(progress) ? `${Math.round(progress)}%` : "--%");
+    this.$("p1s-progress-ring").style.setProperty("--p1s-progress", `${safeProgress * 3.6}deg`);
+
+    const taskState = this._state(this._p1sEntity("task_name"));
+    const task = taskState && !["unknown", "unavailable", ""].includes(taskState.state)
+      ? taskState.state
+      : "Bambu P1S";
+    this._setText("p1s-task", task);
+    this._setText("p1s-status", online ? (paused ? "PAUSED" : running ? "PRINTING" : status.toUpperCase()) : "OFFLINE");
+    this.$("p1s-status").classList.toggle("active", active && online);
+    this.$("p1s-dot").classList.toggle("online", online);
+    this.$("p1s-dot").classList.toggle("active", active && online);
+
+    const nozzle = this._number(this._p1sEntity("nozzle_temperature"));
+    const bed = this._number(this._p1sEntity("bed_temperature"));
+    const currentLayer = this._number(this._p1sEntity("current_layer"));
+    const totalLayers = this._number(this._p1sEntity("total_layer_count"));
+    const remaining = this._number(this._p1sEntity("remaining_time"));
+    this._setText("p1s-nozzle", Number.isFinite(nozzle) ? `${Math.round(nozzle)}°` : "--°");
+    this._setText("p1s-bed", Number.isFinite(bed) ? `${Math.round(bed)}°` : "--°");
+    this._setText("p1s-layer", `${Number.isFinite(currentLayer) ? Math.round(currentLayer) : "--"}/${Number.isFinite(totalLayers) ? Math.round(totalLayers) : "--"}`);
+    this._setText("p1s-remaining", active && Number.isFinite(remaining) && remaining > 0 ? this._formatDuration(remaining) : "--");
+
+    const speedSelect = this.$("p1s-speed");
+    const speedState = this._state(this._p1sEntity("printing_speed", "select"));
+    const speedFallback = this._state(this._p1sEntity("speed_profile"));
+    const speed = speedState && speedState.state !== "unavailable" ? speedState.state : (speedFallback && speedFallback.state);
+    if (speed && this.shadowRoot.activeElement !== speedSelect) speedSelect.value = speed;
+    speedSelect.disabled = !speedState || speedState.state === "unavailable";
+
+    const lightState = this._state(this._p1sEntity("chamber_light", "light"));
+    this.$("p1s-light").classList.toggle("on", Boolean(lightState && lightState.state === "on"));
+    this.$("p1s-light").disabled = !lightState || lightState.state === "unavailable";
+
+    const pauseEntity = this._state(this._p1sEntity(paused ? "resume" : "pause", "button"));
+    this.$("p1s-pause").disabled = !active || !pauseEntity || pauseEntity.state === "unavailable";
+    this.$("p1s-pause-icon").setAttribute("icon", paused ? "mdi:play" : "mdi:pause");
+    const stopEntity = this._state(this._p1sEntity("stop", "button"));
+    this.$("p1s-stop").disabled = !active || !stopEntity || stopEntity.state === "unavailable";
+  }
+
+  async _toggleP1sLight() {
+    const entityId = this._p1sEntity("chamber_light", "light");
+    if (entityId && this._hass) await this._hass.callService("light", "toggle", { entity_id: entityId });
+  }
+
+  async _setP1sSpeed(option) {
+    const entityId = this._p1sEntity("printing_speed", "select");
+    if (entityId && this._hass) await this._hass.callService("select", "select_option", { entity_id: entityId, option });
+  }
+
+  async _pauseResumeP1s() {
+    const status = this._state(this._p1sEntity("print_status"));
+    const action = status && status.state === "pause" ? "resume" : "pause";
+    const entityId = this._p1sEntity(action, "button");
+    if (entityId && this._hass) await this._hass.callService("button", "press", { entity_id: entityId });
+  }
+
+  _startP1sStopHold(event) {
+    const button = this.$("p1s-stop");
+    if (button.disabled || this._p1sStopTimer) return;
+    event.preventDefault();
+    button.classList.add("holding");
+    this._p1sStopTimer = setTimeout(async () => {
+      this._p1sStopTimer = null;
+      button.classList.remove("holding");
+      const entityId = this._p1sEntity("stop", "button");
+      if (entityId && this._hass) await this._hass.callService("button", "press", { entity_id: entityId });
+    }, 900);
+  }
+
+  _cancelP1sStopHold() {
+    if (this._p1sStopTimer) clearTimeout(this._p1sStopTimer);
+    this._p1sStopTimer = null;
+    const button = this.$("p1s-stop");
+    if (button) button.classList.remove("holding");
   }
 
   _updateRadio() {
@@ -731,8 +883,16 @@ class AnenjiWallPanel extends HTMLElement {
       .summary-item.blue ha-icon { color: var(--blue); }
       .side-column { min-width: 0; display: grid; grid-template-rows: 184px minmax(0, 1fr); gap: 10px; }
       h2 { color: #f4f7fa; margin: 0; font-size: 20px; letter-spacing: .02em; }
-      .outlets-panel { padding: 14px; }
-      .outlet-grid { height: calc(100% - 36px); margin-top: 11px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8px; }
+      .utility-panel { padding: 9px 11px 10px; min-height: 0; }
+      .utility-tabs { height: 27px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #2c3b49; }
+      .utility-tab { height: 28px; padding: 0 1px 7px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted) !important; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+      .utility-tab.active { color: #f4f7fa !important; border-bottom-color: var(--blue); }
+      .utility-tab i { display: inline-block; width: 7px; height: 7px; margin-left: 4px; border-radius: 50%; background: #52606e; }
+      .utility-tab i.online { background: var(--blue); }
+      .utility-tab i.active { background: var(--green); box-shadow: 0 0 8px rgba(63, 234, 135, .75); }
+      .utility-view { display: none; height: calc(100% - 27px); padding-top: 7px; }
+      .utility-view.active { display: block; }
+      .outlet-grid { height: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 7px; }
       .outlet { border: 1px solid #3a4a59; border-radius: 11px; background: #151f29; display: grid; grid-template-columns: 34px 1fr 29px; align-items: center; gap: 9px; padding: 9px 11px; cursor: pointer; text-align: left; }
       .outlet ha-icon { width: 31px; height: 31px; color: #c9d5e0; }
       .outlet span { color: #f4f7fa; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 700; white-space: nowrap; }
@@ -744,6 +904,28 @@ class AnenjiWallPanel extends HTMLElement {
       .outlet.on .toggle-dot::after { left: 14px; background: white; }
       .outlet:disabled { opacity: .38; cursor: default; }
       .outlet.unavailable { opacity: .45; }
+      .p1s-view.active { display: grid; grid-template-rows: minmax(0, 1fr) 35px; gap: 5px; }
+      .p1s-main { min-width: 0; display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 10px; }
+      .p1s-progress { --p1s-progress: 0deg; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--green) 0 var(--p1s-progress), #263441 var(--p1s-progress) 360deg); position: relative; }
+      .p1s-progress::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #111a23; }
+      .p1s-progress strong { position: relative; z-index: 1; color: #f4f7fa; font-size: 15px; }
+      .p1s-details { min-width: 0; display: grid; gap: 7px; }
+      .p1s-title-row { display: flex; align-items: center; justify-content: space-between; gap: 7px; min-width: 0; }
+      .p1s-title-row > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+      #p1s-status { flex: 0 0 auto; color: var(--muted); border: 1px solid #3d4d5c; border-radius: 999px; padding: 2px 6px; font-size: 9px; font-weight: 800; }
+      #p1s-status.active { color: var(--green); border-color: rgba(63, 234, 135, .55); }
+      .p1s-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; }
+      .p1s-metrics span { color: var(--muted); font-size: 9px; font-weight: 700; white-space: nowrap; }
+      .p1s-metrics b { color: #f4f7fa; margin-left: 3px; font-size: 11px; }
+      .p1s-actions { display: grid; grid-template-columns: 35px minmax(0, 1fr) 35px 35px; gap: 6px; }
+      .p1s-action, #p1s-speed { height: 35px; border: 1px solid #3a4a59; border-radius: 8px; background: #151f29; color: #f4f7fa !important; }
+      .p1s-action { display: grid; place-items: center; padding: 0; cursor: pointer; position: relative; overflow: hidden; }
+      .p1s-action ha-icon { width: 21px; height: 21px; }
+      .p1s-action.on { color: var(--amber) !important; border-color: #9e7924; }
+      .p1s-action.danger { color: #ff7a82 !important; }
+      .p1s-action.danger.holding { border-color: var(--red); background: var(--red); color: white !important; transition: background .9s linear; }
+      .p1s-action:disabled, #p1s-speed:disabled { opacity: .35; cursor: default; }
+      #p1s-speed { min-width: 0; padding: 0 7px; font-size: 11px; font-weight: 700; outline: none; }
       .radio-panel { padding: 11px 14px 10px; display: grid; grid-template-rows: auto auto 58px 28px 1fr; row-gap: 4px; min-height: 0; }
       .radio-heading { display: flex; justify-content: space-between; align-items: center; }
       .status-pill { border: 1px solid #3d4d5c; border-radius: 999px; color: var(--muted); padding: 3px 8px; font-size: 10px; font-weight: 800; }
@@ -805,6 +987,7 @@ class AnenjiWallPanelEditor extends HTMLElement {
           4
         ),
       },
+      p1s: { ...stub.p1s, ...(incoming.p1s || {}) },
       thresholds: { ...stub.thresholds, ...(incoming.thresholds || {}) },
     };
     this._render();
@@ -877,6 +1060,13 @@ class AnenjiWallPanelEditor extends HTMLElement {
             ${this._textField("Icon", `outlets.${index}.icon`)}
           </div>
         `).join(""))}
+
+        ${this._section("p1s", "Bambu P1S", `
+          <div class="grid">
+            ${this._entityField("Print status *", "p1s.print_status", ["sensor"])}
+          </div>
+          <div class="hint">Select the printer's Print Status sensor. Progress, task, layers, remaining time, temperatures, speed, chamber light, pause/resume, and stop are detected automatically from the same P1S device prefix.</div>
+        `)}
 
         ${this._section("radio", "Wi-Fi Radio", `
           <div class="grid">
