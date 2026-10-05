@@ -108,6 +108,10 @@ class AnenjiWallPanel extends HTMLElement {
               <span id="date">--</span>
             </div>
             <div class="status-strip">
+              <button id="theme-toggle" class="theme-toggle" aria-label="Theme: Auto" title="Theme: Auto">
+                <ha-icon id="theme-icon" icon="mdi:theme-light-dark"></ha-icon>
+              </button>
+              <span class="divider"></span>
               <ha-icon icon="mdi:wifi"></ha-icon>
               <span class="divider"></span>
               <ha-icon icon="mdi:home-thermometer-outline"></ha-icon>
@@ -306,6 +310,7 @@ class AnenjiWallPanel extends HTMLElement {
     this.$("radio-prev").addEventListener("click", () => this._transport("previous"));
     this.$("radio-next").addEventListener("click", () => this._transport("next"));
     this.$("radio-volume").addEventListener("change", (event) => this._setVolume(Number(event.target.value)));
+    this.$("theme-toggle").addEventListener("click", () => this._cycleTheme());
     this.$("outlets-tab").addEventListener("click", () => this._showUtilityView("outlets"));
     this.$("p1s-tab").addEventListener("click", () => this._showUtilityView("p1s"));
     this.$("p1s-light").addEventListener("click", () => this._toggleP1sLight());
@@ -388,7 +393,11 @@ class AnenjiWallPanel extends HTMLElement {
   _syncTheme() {
     const card = this.shadowRoot.querySelector("ha-card");
     if (!card) return;
-    const mode = String(this._config.theme_mode || "auto").toLowerCase();
+    let mode = String(this._config.theme_mode || "auto").toLowerCase();
+    try {
+      const savedMode = localStorage.getItem("anenji-wall-panel:theme");
+      if (["auto", "light", "dark"].includes(savedMode)) mode = savedMode;
+    } catch (_error) { /* Storage can be unavailable in restricted WebViews. */ }
     let isLight = mode === "light";
     if (mode === "auto") {
       const styles = getComputedStyle(this);
@@ -398,6 +407,25 @@ class AnenjiWallPanel extends HTMLElement {
       isLight = rgb ? ((rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000) > 150 : false;
     }
     card.classList.toggle("theme-light", isLight);
+    this._activeThemeMode = mode;
+    const button = this.$("theme-toggle");
+    const icon = this.$("theme-icon");
+    const label = `Theme: ${mode.charAt(0).toUpperCase()}${mode.slice(1)}`;
+    if (button) {
+      button.setAttribute("aria-label", label);
+      button.setAttribute("title", label);
+      button.dataset.mode = mode;
+    }
+    if (icon) icon.setAttribute("icon", mode === "light" ? "mdi:white-balance-sunny" : mode === "dark" ? "mdi:weather-night" : "mdi:theme-light-dark");
+  }
+
+  _cycleTheme() {
+    const modes = ["auto", "light", "dark"];
+    const current = this._activeThemeMode || "auto";
+    const next = modes[(modes.indexOf(current) + 1) % modes.length];
+    try { localStorage.setItem("anenji-wall-panel:theme", next); } catch (_error) { /* Use current session only. */ }
+    this._activeThemeMode = next;
+    this._syncTheme();
   }
 
   _parseCssColor(color) {
@@ -945,6 +973,10 @@ class AnenjiWallPanel extends HTMLElement {
       #date { color: var(--muted); font-size: 18px; font-weight: 600; }
       .status-strip { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 19px; font-weight: 700; }
       .status-strip ha-icon { width: 25px; height: 25px; }
+      .theme-toggle { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--control-bg); cursor: pointer; }
+      .theme-toggle ha-icon { width: 22px; height: 22px; color: var(--amber); }
+      .theme-toggle[data-mode="dark"] ha-icon { color: #86bdf5; }
+      .theme-toggle[data-mode="auto"] ha-icon { color: var(--muted); }
       .divider { width: 1px; height: 28px; background: var(--line); margin: 0 6px; }
       .dashboard { height: calc(100% - 42px); display: grid; grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr); gap: 10px; }
       .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel-bg); }
@@ -1112,6 +1144,7 @@ class AnenjiWallPanel extends HTMLElement {
         #date { font-size: 15px; }
         .status-strip { gap: 7px; font-size: 16px; }
         .status-strip ha-icon { width: 22px; height: 22px; }
+        .theme-toggle { width: 32px; height: 32px; }
         .divider { height: 23px; margin: 0 3px; }
         .dashboard { height: auto; grid-template-columns: minmax(0, 1fr); gap: 9px; }
         .energy-panel { display: grid; grid-template-rows: 570px auto; min-height: 0; }
