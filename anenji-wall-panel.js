@@ -885,7 +885,7 @@ class AnenjiWallPanel extends HTMLElement {
       h2 { color: #f4f7fa; margin: 0; font-size: 20px; letter-spacing: .02em; }
       .utility-panel { padding: 9px 11px 10px; min-height: 0; }
       .utility-tabs { height: 27px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #2c3b49; }
-      .utility-tab { height: 28px; padding: 0 1px 7px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted) !important; font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+      .utility-tab { height: 28px; padding: 0 1px 7px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted) !important; font-size: 14px; font-weight: 800; cursor: pointer; white-space: nowrap; }
       .utility-tab.active { color: #f4f7fa !important; border-bottom-color: var(--blue); }
       .utility-tab i { display: inline-block; width: 7px; height: 7px; margin-left: 4px; border-radius: 50%; background: #52606e; }
       .utility-tab i.online { background: var(--blue); }
@@ -908,24 +908,24 @@ class AnenjiWallPanel extends HTMLElement {
       .p1s-main { min-width: 0; display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 10px; }
       .p1s-progress { --p1s-progress: 0deg; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--green) 0 var(--p1s-progress), #263441 var(--p1s-progress) 360deg); position: relative; }
       .p1s-progress::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #111a23; }
-      .p1s-progress strong { position: relative; z-index: 1; color: #f4f7fa; font-size: 15px; }
+      .p1s-progress strong { position: relative; z-index: 1; color: #f4f7fa; font-size: 17px; }
       .p1s-details { min-width: 0; display: grid; gap: 7px; }
       .p1s-title-row { display: flex; align-items: center; justify-content: space-between; gap: 7px; min-width: 0; }
-      .p1s-title-row > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-      #p1s-status { flex: 0 0 auto; color: var(--muted); border: 1px solid #3d4d5c; border-radius: 999px; padding: 2px 6px; font-size: 9px; font-weight: 800; }
+      .p1s-title-row > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+      #p1s-status { flex: 0 0 auto; color: var(--muted); border: 1px solid #3d4d5c; border-radius: 999px; padding: 2px 7px; font-size: 10px; font-weight: 800; }
       #p1s-status.active { color: var(--green); border-color: rgba(63, 234, 135, .55); }
       .p1s-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; }
-      .p1s-metrics span { color: var(--muted); font-size: 9px; font-weight: 700; white-space: nowrap; }
-      .p1s-metrics b { color: #f4f7fa; margin-left: 3px; font-size: 11px; }
+      .p1s-metrics span { color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
+      .p1s-metrics b { color: #f4f7fa; margin-left: 3px; font-size: 14px; }
       .p1s-actions { display: grid; grid-template-columns: 35px minmax(0, 1fr) 35px 35px; gap: 6px; }
       .p1s-action, #p1s-speed { height: 35px; border: 1px solid #3a4a59; border-radius: 8px; background: #151f29; color: #f4f7fa !important; }
       .p1s-action { display: grid; place-items: center; padding: 0; cursor: pointer; position: relative; overflow: hidden; }
-      .p1s-action ha-icon { width: 21px; height: 21px; }
+      .p1s-action ha-icon { width: 23px; height: 23px; }
       .p1s-action.on { color: var(--amber) !important; border-color: #9e7924; }
       .p1s-action.danger { color: #ff7a82 !important; }
       .p1s-action.danger.holding { border-color: var(--red); background: var(--red); color: white !important; transition: background .9s linear; }
       .p1s-action:disabled, #p1s-speed:disabled { opacity: .35; cursor: default; }
-      #p1s-speed { min-width: 0; padding: 0 7px; font-size: 11px; font-weight: 700; outline: none; }
+      #p1s-speed { min-width: 0; padding: 0 7px; font-size: 13px; font-weight: 700; outline: none; }
       .radio-panel { padding: 11px 14px 10px; display: grid; grid-template-rows: auto auto 58px 28px 1fr; row-gap: 4px; min-height: 0; }
       .radio-heading { display: flex; justify-content: space-between; align-items: center; }
       .status-pill { border: 1px solid #3d4d5c; border-radius: 999px; color: var(--muted); padding: 3px 8px; font-size: 10px; font-weight: 800; }
