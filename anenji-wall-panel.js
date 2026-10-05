@@ -32,6 +32,8 @@ class AnenjiWallPanel extends HTMLElement {
           { name: "STATION 4", option: "" },
         ],
       },
+      battery_capacity_kwh: "",
+      grid_cutoff_soc: 20,
       thresholds: { active_power: 20, battery_low: 20 },
     };
   }
@@ -180,8 +182,9 @@ class AnenjiWallPanel extends HTMLElement {
       <button class="energy-node ${position}" data-more="${position}">
         <ha-icon icon="${icon}"></ha-icon>
         <div>
-          <span>${label}</span>
+          <span${position === "battery" ? ' id="battery-label"' : ""}>${label}</span>
           <strong><b id="${valueId}">--</b> <small id="${unitId}"></small></strong>
+          ${position === "battery" ? '<em id="battery-meta" class="battery-meta">IDLE • GRID AT --%</em>' : ""}
         </div>
       </button>
     `;
@@ -258,12 +261,28 @@ class AnenjiWallPanel extends HTMLElement {
     const grid = this._number(e.grid_power);
     const home = this._number(e.home_power);
     const battery = this._number(e.battery_soc);
-    const batteryPower = this._number(e.battery_power);
+    const directBatteryPower = this._number(e.battery_power);
+    const chargePower = this._number(e.battery_charge_power);
+    const dischargePower = this._number(e.battery_discharge_power);
+    let batteryPower = NaN;
+    if (Number.isFinite(chargePower) || Number.isFinite(dischargePower)) {
+      batteryPower = (Number.isFinite(chargePower) ? Math.abs(this._powerToWatts(e.battery_charge_power, chargePower)) : 0)
+        - (Number.isFinite(dischargePower) ? Math.abs(this._powerToWatts(e.battery_discharge_power, dischargePower)) : 0);
+    } else if (Number.isFinite(directBatteryPower)) {
+      batteryPower = this._powerToWatts(e.battery_power, directBatteryPower);
+    } else if ([solar, grid, home].every(Number.isFinite)) {
+      batteryPower = this._powerToWatts(e.solar_power, solar)
+        + this._powerToWatts(e.grid_power, grid)
+        - this._powerToWatts(e.home_power, home);
+    }
 
     this._setPower("solar", solar, e.solar_power);
     this._setPower("grid", grid, e.grid_power, true);
     this._setPower("home", home, e.home_power);
     this._setBattery(battery);
+    const batteryInfo = this._batteryInfo(battery, batteryPower);
+    this._setText("battery-label", batteryInfo.label);
+    this._setText("battery-meta", batteryInfo.meta);
 
     this._setText("load-percent", this._formatValue(e.load_percent, "%"));
     this._setText("inverter-secondary", this._inverterSecondary());
@@ -275,7 +294,7 @@ class AnenjiWallPanel extends HTMLElement {
     this._setFlow("solar-flow", solar > this._config.thresholds.active_power, false);
     this._setFlow("home-flow", home > this._config.thresholds.active_power, false);
     this._setFlow("grid-flow", Math.abs(grid) > this._config.thresholds.active_power, grid < 0);
-    this._setFlow("battery-flow", Math.abs(batteryPower) > this._config.thresholds.active_power, batteryPower > 0);
+    this._setFlow("battery-flow", Math.abs(batteryPower) > this._config.thresholds.active_power, batteryPower < 0);
 
     this._updateOutlets();
     this._updateRadio();
@@ -470,6 +489,62 @@ class AnenjiWallPanel extends HTMLElement {
     return home && home.state !== "unavailable" ? "Online" : "Offline";
   }
 
+  _batteryInfo(soc, batteryPowerWatts) {
+    const cutoffEntity = this._config.grid_cutoff_soc_entity;
+    const entityCutoff = this._number(cutoffEntity);
+    const configuredCutoff = Number(this._config.grid_cutoff_soc);
+    const cutoff = Number.isFinite(entityCutoff)
+      ? entityCutoff
+      : (Number.isFinite(configuredCutoff) ? configuredCutoff : NaN);
+    const capacity = Number(this._config.battery_capacity_kwh);
+    const cutoffText = Number.isFinite(cutoff) ? `GRID AT ${Math.round(cutoff)}%` : "GRID AT --%";
+    const label = Number.isFinite(cutoff) ? `BATTERY · GRID ${Math.round(cutoff)}%` : "BATTERY";
+
+    if (!Number.isFinite(batteryPowerWatts)) {
+      return { label, meta: `${cutoffText} • ETA --` };
+    }
+
+    const powerText = this._humanPower(Math.abs(batteryPowerWatts), "W");
+    const formattedPower = `${powerText.value} ${powerText.unit}`;
+    const powerKw = batteryPowerWatts / 1000;
+    if (Math.abs(powerKw) < 0.02) return { label, meta: `IDLE • ${cutoffText}` };
+
+    if (!Number.isFinite(soc) || !Number.isFinite(capacity) || capacity <= 0) {
+      return {
+        label,
+        meta: powerKw > 0 ? `CHARGE ${formattedPower} • ETA --` : `TO HOME ${formattedPower} • ETA --`,
+      };
+    }
+
+    if (powerKw > 0) {
+      const energyToFull = Math.max(0, (100 - soc) / 100 * capacity);
+      return { label, meta: `CHARGE ${formattedPower} • FULL ${this._formatDuration(energyToFull / powerKw)}` };
+    }
+
+    const effectiveCutoff = Number.isFinite(cutoff) ? cutoff : 0;
+    if (soc <= effectiveCutoff) return { label, meta: `TO HOME ${formattedPower} • GRID NOW` };
+    const availableEnergy = Math.max(0, (soc - effectiveCutoff) / 100 * capacity);
+    return { label, meta: `TO HOME ${formattedPower} • GRID ${this._formatDuration(availableEnergy / Math.abs(powerKw))}` };
+  }
+
+  _powerToWatts(entityId, value) {
+    if (!Number.isFinite(value)) return NaN;
+    const state = this._state(entityId);
+    const unit = state && state.attributes && state.attributes.unit_of_measurement
+      ? String(state.attributes.unit_of_measurement).toLowerCase()
+      : "w";
+    return unit === "kw" ? value * 1000 : value;
+  }
+
+  _formatDuration(hours) {
+    if (!Number.isFinite(hours) || hours < 0 || hours > 240) return "--";
+    const totalMinutes = Math.max(1, Math.round(hours * 60));
+    const wholeHours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (!wholeHours) return `${minutes}m`;
+    return minutes ? `${wholeHours}h ${minutes}m` : `${wholeHours}h`;
+  }
+
   _setFlow(id, active, reverse) {
     const element = this.$(id);
     if (!element) return;
@@ -603,8 +678,8 @@ class AnenjiWallPanel extends HTMLElement {
         padding: 13px 16px; cursor: pointer; text-align: left; z-index: 2; overflow: hidden;
       }
       .energy-node:active, .summary-item:active, .outlet:active, .station:active, .round:active { transform: scale(.97); }
-      .energy-node ha-icon { width: 46px; height: 46px; flex: 0 0 46px; }
-      .energy-node > div { min-width: 0; flex: 1; text-align: center; }
+      .energy-node > ha-icon { position: absolute; left: 12px; width: 34px; height: 34px; }
+      .energy-node > div { min-width: 0; width: 100%; text-align: center; }
       .energy-node span { display: block; color: var(--muted); font-size: 14px; font-weight: 800; letter-spacing: .03em; }
       .energy-node strong { display: block; color: #f4f7fa; margin-top: 4px; font-size: 25px; line-height: 1; white-space: nowrap; }
       .energy-node strong b { font: inherit; }
@@ -618,8 +693,10 @@ class AnenjiWallPanel extends HTMLElement {
       .home strong { color: #f4f7fa; }
       .battery { width: 205px; height: 92px; bottom: 18px; left: 50%; transform: translateX(-50%); border-color: #2ea963; }
       .battery ha-icon, .battery strong { color: var(--green); }
+      .battery #battery-label { font-size: 12px; }
       .battery.low { border-color: var(--red); }
       .battery.low ha-icon, .battery.low strong { color: var(--red); }
+      .battery-meta { display: block; margin-top: 5px; color: #9cabbc; font-size: 10px; font-style: normal; font-weight: 700; line-height: 1; white-space: nowrap; }
       .inverter { width: 180px; height: 106px; top: 50%; left: 50%; transform: translate(-50%, -50%); justify-content: center; padding: 10px 12px; text-align: center; }
       .inverter > ha-icon { display: none; }
       .inverter-copy { display: grid; gap: 4px; width: 100%; text-align: center; }
@@ -634,9 +711,11 @@ class AnenjiWallPanel extends HTMLElement {
       .flow.active span:nth-child(2) { animation-delay: .18s; }
       .flow.active span:nth-child(3) { animation-delay: .36s; }
       .flow.reverse { flex-direction: row-reverse; }
+      .flow.horizontal.reverse span { transform: rotate(180deg); }
       .flow.vertical { flex-direction: column; }
       .flow.vertical span { transform: rotate(90deg); }
       .flow.vertical.reverse { flex-direction: column-reverse; }
+      .flow.vertical.reverse span { transform: rotate(-90deg); }
       .solar-flow { color: var(--amber); width: 38px; height: calc(50% - 157px); top: 104px; left: calc(50% - 19px); }
       .grid-flow { color: var(--blue); height: 38px; width: calc(50% - 268px); top: calc(50% - 19px); left: 178px; }
       .home-flow { color: #eaf3fb; height: 38px; width: calc(50% - 268px); top: calc(50% - 19px); right: 178px; }
@@ -750,16 +829,13 @@ class AnenjiWallPanelEditor extends HTMLElement {
         details { border: 1px solid var(--divider-color); border-radius: 10px; overflow: hidden; background: var(--card-background-color); }
         summary { cursor: pointer; padding: 13px 14px; font-weight: 700; user-select: none; }
         .section { display: grid; gap: 12px; padding: 4px 14px 16px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .row-card { display: grid; grid-template-columns: minmax(110px, .75fr) minmax(180px, 1.4fr) minmax(120px, .9fr); gap: 8px; align-items: end; padding: 10px; border: 1px solid var(--divider-color); border-radius: 9px; }
-        .station-row { grid-template-columns: minmax(120px, .8fr) minmax(220px, 1.5fr); }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        .row-card { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 10px; border: 1px solid var(--divider-color); border-radius: 9px; }
+        .station-row { grid-template-columns: 1fr; }
         label { display: grid; gap: 6px; color: var(--secondary-text-color); font-size: 12px; }
         input, select { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--divider-color); border-radius: 8px; background: var(--input-fill-color, var(--card-background-color)); color: var(--primary-text-color); font: inherit; box-sizing: border-box; }
         ha-entity-picker { width: 100%; }
         .hint { color: var(--secondary-text-color); font-size: 12px; line-height: 1.35; }
-        @media (max-width: 700px) {
-          .grid, .row-card, .station-row { grid-template-columns: 1fr; }
-        }
       </style>
       <div class="editor">
         <div class="intro">Choose entities here. YAML is not required. Required fields are marked with an asterisk.</div>
@@ -768,6 +844,9 @@ class AnenjiWallPanelEditor extends HTMLElement {
           <div class="grid">
             ${this._textField("Panel title", "title")}
             ${this._entityField("Indoor temperature", "indoor_temperature", ["sensor"])}
+            ${this._numberField("Battery capacity (kWh)", "battery_capacity_kwh", 0, 1000)}
+            ${this._numberField("Switch to grid at (%)", "grid_cutoff_soc", 0, 100)}
+            ${this._entityField("Switch-to-grid percentage entity", "grid_cutoff_soc_entity", ["sensor", "number", "input_number"])}
           </div>
           <div class="grid">
             ${this._numberField("Active flow threshold (W)", "thresholds.active_power", 0, 1000)}
@@ -781,7 +860,9 @@ class AnenjiWallPanelEditor extends HTMLElement {
             ${this._entityField("Combined grid power *", "entities.grid_power", ["sensor"])}
             ${this._entityField("Home load power *", "entities.home_power", ["sensor"])}
             ${this._entityField("Battery state of charge *", "entities.battery_soc", ["sensor"])}
-            ${this._entityField("Battery power", "entities.battery_power", ["sensor"])}
+            ${this._entityField("Signed battery power (+ charge / − discharge)", "entities.battery_power", ["sensor"])}
+            ${this._entityField("Battery charging power", "entities.battery_charge_power", ["sensor"])}
+            ${this._entityField("Battery discharging power", "entities.battery_discharge_power", ["sensor"])}
             ${this._entityField("Battery voltage", "entities.battery_voltage", ["sensor"])}
             ${this._entityField("Inverter load percent", "entities.load_percent", ["sensor"])}
             ${this._entityField("Inverter temperature", "entities.inverter_temperature", ["sensor"])}
@@ -789,7 +870,7 @@ class AnenjiWallPanelEditor extends HTMLElement {
             ${this._entityField("Battery charged today", "entities.battery_charge_today", ["sensor"])}
             ${this._entityField("Battery discharged today", "entities.battery_discharge_today", ["sensor"])}
           </div>
-          <div class="hint">Combined grid power should contain Grid to Battery + Grid to Load.</div>
+          <div class="hint">Combined grid power should contain Grid to Battery + Grid to Load. Use either one signed battery-power entity (positive = charging) or separate charging/discharging entities. If all are empty, battery flow is estimated as Solar + Grid − Home.</div>
         `)}
 
         ${this._section("outlets", "Outlets", this._config.outlets.map((item, index) => `
