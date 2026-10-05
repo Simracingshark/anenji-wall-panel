@@ -16,8 +16,10 @@ It combines:
 2. Paste this repository URL and choose **Dashboard** as the type.
 3. Install **Anenji Wall Panel**.
 4. Confirm that the resource `/hacsfiles/anenji-wall-panel/anenji-wall-panel.js` was added as a JavaScript module.
-5. Add a Manual card and paste `dashboard.example.yaml`.
-6. Replace the four sample outlet entities with the real switches.
+5. Open a dashboard, select **Add card**, and choose **Anenji Wall Panel**.
+6. Select the required entities in the visual editor. YAML is not required.
+
+`dashboard.example.yaml` remains available as an optional advanced example.
 
 ## Manual installation
 
@@ -26,4 +28,3 @@ Copy `anenji-wall-panel.js` to `/config/www/`, register `/local/anenji-wall-pane
 ## Tablet target
 
 The card is tuned for a Samsung P3113 in landscape orientation. Its maximum height is 500 px so the Home Assistant app bar and Lovelace spacing do not cause vertical scrolling.
-
