@@ -36,7 +36,7 @@ class AnenjiWallPanel extends HTMLElement {
       p1s: {},
       battery_capacity_kwh: "",
       grid_cutoff_soc: 20,
-      thresholds: { active_power: 20, grid_noise: 30, battery_low: 20 },
+      thresholds: { active_power: 20, grid_noise: 0, battery_low: 20 },
     };
   }
 
@@ -55,7 +55,7 @@ class AnenjiWallPanel extends HTMLElement {
       p1s: {},
       thresholds: {
         active_power: 20,
-        grid_noise: 30,
+        grid_noise: 0,
         battery_low: 20,
       },
       ...config,
