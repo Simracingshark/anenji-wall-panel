@@ -133,7 +133,7 @@ class AnenjiWallPanel extends HTMLElement {
                   <span>GRID INPUT</span><strong id="telemetry-grid">-- V • -- Hz</strong>
                 </div>
                 <div class="telemetry-chip telemetry-solar">
-                  <span id="telemetry-solar-label">PV INPUTS • TODAY -- kWh</span>
+                  <span id="telemetry-solar-label">PV TODAY -- kWh</span>
                   <strong class="telemetry-pv-lines"><b id="telemetry-pv1">PV1 -- V • -- kW</b><b id="telemetry-pv2">PV2 -- V • -- kW</b></strong>
                 </div>
                 <div class="telemetry-chip telemetry-battery">
@@ -364,7 +364,7 @@ class AnenjiWallPanel extends HTMLElement {
       ? `${calculatedBatteryCurrent >= 0 ? "+" : "−"}${Math.abs(calculatedBatteryCurrent).toFixed(1)} A`
       : "-- A";
     this._setText("telemetry-grid", `${this._compactSensor(gridVoltageEntity, "V", 0)} • ${this._compactSensor(gridFrequencyEntity, "Hz", 1)}`);
-    this._setText("telemetry-solar-label", `PV INPUTS • TODAY ${this._compactSensor(solarTodayEntity, "kWh", 1)}`);
+    this._setText("telemetry-solar-label", `PV TODAY ${this._compactSensor(solarTodayEntity, "kWh", 1)}`);
     this._setText("telemetry-pv1", `PV1 ${this._compactSensor(pv1VoltageEntity, "V", 0)} • ${this._compactPower(pv1PowerEntity)}`);
     this._setText("telemetry-pv2", `PV2 ${this._compactSensor(pv2VoltageEntity, "V", 0)} • ${this._compactPower(pv2PowerEntity)}`);
     this._setText("telemetry-battery", `${this._compactSensor(batteryVoltageEntity, "V", 1)} • ${batteryCurrentText}`);
@@ -931,7 +931,7 @@ class AnenjiWallPanel extends HTMLElement {
       .telemetry-pv-lines { display: grid; gap: 3px; }
       .telemetry-pv-lines b { color: inherit; font: inherit; }
       .telemetry-grid { top: 35px; left: 25px; text-align: left; }
-      .telemetry-solar { top: 35px; right: 25px; text-align: right; }
+      .telemetry-solar { top: 35px; right: 15px; text-align: right; }
       .telemetry-battery { bottom: 38px; left: 25px; text-align: left; }
       .telemetry-home { bottom: 38px; right: 25px; text-align: right; }
       .flow { position: absolute; z-index: 1; color: #637587; opacity: .32; overflow: hidden; display: flex; align-items: center; justify-content: space-around; font-size: 33px; font-weight: 900; }
