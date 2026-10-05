@@ -168,15 +168,16 @@ class AnenjiWallPanel extends HTMLElement {
                 </div>
                 <div id="p1s-view" class="utility-view p1s-view">
                   <div class="p1s-main">
-                    <div id="p1s-progress-ring" class="p1s-progress"><strong id="p1s-progress">--%</strong></div>
-                    <div class="p1s-details">
-                      <div class="p1s-title-row"><strong id="p1s-task">Bambu P1S</strong><span id="p1s-status">OFFLINE</span></div>
-                      <div class="p1s-metrics">
-                        <span>NOZZLE <b id="p1s-nozzle">--°</b></span>
-                        <span>BED <b id="p1s-bed">--°</b></span>
-                        <span>LAYER <b id="p1s-layer">--/--</b></span>
-                        <span>LEFT <b id="p1s-remaining">--</b></span>
-                      </div>
+                    <div class="p1s-title-row"><strong id="p1s-task">Bambu P1S</strong><span id="p1s-status">OFFLINE</span></div>
+                    <div class="p1s-progress-row">
+                      <div id="p1s-progress-ring" class="p1s-progress-bar"><i></i></div>
+                      <strong id="p1s-progress">--%</strong>
+                    </div>
+                    <div class="p1s-metrics">
+                      <span>NOZZLE <b id="p1s-nozzle">--°</b></span>
+                      <span>BED <b id="p1s-bed">--°</b></span>
+                      <span>LAYER <b id="p1s-layer">--/--</b></span>
+                      <span>LEFT <b id="p1s-remaining">--</b></span>
                     </div>
                   </div>
                   <div class="p1s-actions">
@@ -443,7 +444,7 @@ class AnenjiWallPanel extends HTMLElement {
     const progress = this._number(this._p1sEntity("print_progress"));
     const safeProgress = Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
     this._setText("p1s-progress", Number.isFinite(progress) ? `${Math.round(progress)}%` : "--%");
-    this.$("p1s-progress-ring").style.setProperty("--p1s-progress", `${safeProgress * 3.6}deg`);
+    this.$("p1s-progress-ring").style.setProperty("--p1s-progress", `${safeProgress}%`);
 
     const taskState = this._state(this._p1sEntity("task_name"));
     const task = taskState && !["unknown", "unavailable", ""].includes(taskState.state)
@@ -983,28 +984,28 @@ class AnenjiWallPanel extends HTMLElement {
       .outlet.on .toggle-dot::after { left: 14px; background: white; }
       .outlet:disabled { opacity: .38; cursor: default; }
       .outlet.unavailable { opacity: .45; }
-      .p1s-view.active { display: grid; grid-template-rows: minmax(0, 1fr) 35px; gap: 5px; }
-      .p1s-main { min-width: 0; display: grid; grid-template-columns: 62px minmax(0, 1fr); align-items: center; gap: 10px; }
-      .p1s-progress { --p1s-progress: 0deg; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--green) 0 var(--p1s-progress), #263441 var(--p1s-progress) 360deg); position: relative; }
-      .p1s-progress::after { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #111a23; }
-      .p1s-progress strong { position: relative; z-index: 1; color: #f4f7fa; font-size: 17px; }
-      .p1s-details { min-width: 0; display: grid; gap: 7px; }
+      .p1s-view.active { display: grid; grid-template-rows: minmax(0, 1fr) 38px; gap: 5px; }
+      .p1s-main { min-width: 0; display: grid; grid-template-rows: auto 18px auto; align-content: center; gap: 6px; }
       .p1s-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 7px; min-width: 0; }
-      .p1s-title-row > strong { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; font-size: 14px; line-height: 1.08; }
-      #p1s-status { flex: 0 0 auto; color: var(--muted); border: 1px solid #3d4d5c; border-radius: 999px; padding: 2px 7px; font-size: 10px; font-weight: 800; }
+      .p1s-title-row > strong { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; font-size: 16px; line-height: 1.08; }
+      #p1s-status { flex: 0 0 auto; color: var(--muted); border: 1px solid #3d4d5c; border-radius: 999px; padding: 3px 8px; font-size: 11px; font-weight: 800; }
       #p1s-status.active { color: var(--green); border-color: rgba(63, 234, 135, .55); }
-      .p1s-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 10px; }
-      .p1s-metrics span { color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
-      .p1s-metrics b { color: #f4f7fa; margin-left: 3px; font-size: 14px; }
-      .p1s-actions { display: grid; grid-template-columns: 35px minmax(0, 1fr) 35px 35px; gap: 6px; }
-      .p1s-action, #p1s-speed { height: 35px; border: 1px solid #3a4a59; border-radius: 8px; background: #151f29; color: #f4f7fa !important; }
+      .p1s-progress-row { display: grid; grid-template-columns: minmax(0, 1fr) 43px; align-items: center; gap: 9px; }
+      .p1s-progress-bar { --p1s-progress: 0%; height: 9px; overflow: hidden; border-radius: 999px; background: #263441; }
+      .p1s-progress-bar i { display: block; width: var(--p1s-progress); height: 100%; border-radius: inherit; background: var(--green); box-shadow: 0 0 9px rgba(63, 234, 135, .55); }
+      .p1s-progress-row > strong { color: #f4f7fa; font-size: 16px; text-align: right; }
+      .p1s-metrics { display: grid; grid-template-columns: repeat(4, 1fr); align-items: baseline; gap: 6px; }
+      .p1s-metrics span { color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; text-align: center; }
+      .p1s-metrics b { display: block; color: #f4f7fa; margin-top: 1px; font-size: 15px; }
+      .p1s-actions { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px 38px; gap: 6px; }
+      .p1s-action, #p1s-speed { height: 38px; border: 1px solid #3a4a59; border-radius: 8px; background: #151f29; color: #f4f7fa !important; }
       .p1s-action { display: grid; place-items: center; padding: 0; cursor: pointer; position: relative; overflow: hidden; }
-      .p1s-action ha-icon { width: 23px; height: 23px; }
+      .p1s-action ha-icon { width: 25px; height: 25px; }
       .p1s-action.on { color: var(--amber) !important; border-color: #9e7924; }
       .p1s-action.danger { color: #ff7a82 !important; }
       .p1s-action.danger.holding { border-color: var(--red); background: var(--red); color: white !important; transition: background .9s linear; }
       .p1s-action:disabled, #p1s-speed:disabled { opacity: .35; cursor: default; }
-      #p1s-speed { min-width: 0; padding: 0 7px; font-size: 13px; font-weight: 700; outline: none; }
+      #p1s-speed { min-width: 0; padding: 0 8px; font-size: 14px; font-weight: 700; outline: none; }
       .radio-panel { padding: 11px 14px 10px; display: grid; grid-template-rows: auto auto 58px 28px 1fr; row-gap: 4px; min-height: 0; }
       .radio-heading { display: flex; justify-content: space-between; align-items: center; }
       .status-pill { border: 1px solid #3d4d5c; border-radius: 999px; color: var(--muted); padding: 3px 8px; font-size: 10px; font-weight: 800; }
