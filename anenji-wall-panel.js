@@ -138,10 +138,10 @@ class AnenjiWallPanel extends HTMLElement {
                 ${this._energyNode("battery", "mdi:battery-high", "BATTERY", "battery-value", "battery-unit")}
 
                 <div class="telemetry-chip telemetry-grid">
-                  <span>GRID INPUT</span><strong id="telemetry-grid">-- V • -- Hz</strong>
+                  <span id="telemetry-grid-label">GRID TODAY -- kWh</span><strong id="telemetry-grid">-- V • -- Hz</strong>
                 </div>
                 <div class="telemetry-chip telemetry-solar">
-                  <span id="telemetry-solar-label">PV TODAY -- kWh</span>
+                  <span>PV INPUT</span>
                   <strong class="telemetry-pv-lines"><b id="telemetry-pv1">PV1 -- V • -- kW</b><b id="telemetry-pv2">PV2 -- V • -- kW</b></strong>
                 </div>
                 <div class="telemetry-chip telemetry-battery">
@@ -158,7 +158,7 @@ class AnenjiWallPanel extends HTMLElement {
               </div>
 
               <div class="energy-summary">
-                ${this._summaryItem("mdi:calendar-today-outline", "Today", "today-value", "--", "neutral")}
+                ${this._summaryItem("mdi:solar-panel-large", "Solar Today", "today-value", "--", "amber")}
                 ${this._summaryItem("mdi:battery-arrow-up-outline", "Charged", "charged-value", "--", "green")}
                 ${this._summaryItem("mdi:battery-arrow-down-outline", "Discharged", "discharged-value", "--", "amber")}
                 ${this._summaryItem("mdi:timer-outline", "Battery ETA", "battery-eta", "--", "blue")}
@@ -355,7 +355,6 @@ class AnenjiWallPanel extends HTMLElement {
 
     this._setText("load-percent", this._formatValue(e.load_percent, "%"));
     this._setText("inverter-secondary", this._inverterSecondary());
-    this._setText("today-value", this._formatEnergy(e.grid_energy_today));
     this._setText("charged-value", this._formatEnergy(e.battery_charge_today));
     this._setText("discharged-value", this._formatEnergy(e.battery_discharge_today));
     this._setText("indoor-temp", this._formatTemperature(this._config.indoor_temperature));
@@ -377,7 +376,8 @@ class AnenjiWallPanel extends HTMLElement {
       ? `${calculatedBatteryCurrent >= 0 ? "+" : "−"}${Math.abs(calculatedBatteryCurrent).toFixed(1)} A`
       : "-- A";
     this._setText("telemetry-grid", `${this._compactSensor(gridVoltageEntity, "V", 0)} • ${this._compactSensor(gridFrequencyEntity, "Hz", 1)}`);
-    this._setText("telemetry-solar-label", `PV TODAY ${this._compactSensor(solarTodayEntity, "kWh", 1)}`);
+    this._setText("telemetry-grid-label", `GRID TODAY ${this._compactSensor(e.grid_energy_today, "kWh", 1)}`);
+    this._setText("today-value", this._compactSensor(solarTodayEntity, "kWh", 1));
     this._setText("telemetry-pv1", `PV1 ${this._compactSensor(pv1VoltageEntity, "V", 0)} • ${this._compactPower(pv1PowerEntity)}`);
     this._setText("telemetry-pv2", `PV2 ${this._compactSensor(pv2VoltageEntity, "V", 0)} • ${this._compactPower(pv2PowerEntity)}`);
     this._setText("telemetry-battery", `${this._compactSensor(batteryVoltageEntity, "V", 1)} • ${batteryCurrentText}`);
@@ -711,7 +711,7 @@ class AnenjiWallPanel extends HTMLElement {
 
   _openSummaryEntity(id) {
     const map = {
-      "today-value": this._config.entities.grid_energy_today,
+      "today-value": this._energyTelemetryEntity("solar_energy_today", ["estimated_pv_energy_today", "pv_energy_today", "solar_energy_today"]),
       "charged-value": this._config.entities.battery_charge_today,
       "discharged-value": this._config.entities.battery_discharge_today,
       "battery-eta": this._config.entities.battery_power || this._config.entities.battery_soc,
