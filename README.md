@@ -38,4 +38,4 @@ Copy `anenji-wall-panel.js` to `/config/www/`, register `/local/anenji-wall-pane
 
 ## Appearance
 
-The visual editor provides **Auto (Home Assistant)**, **Dark**, and **Light** theme modes. Auto follows the active Home Assistant theme, while Dark and Light can be used to force the card appearance independently.
+The visual editor provides **Auto (Home Assistant)**, **Dark**, and **Light** theme modes. Auto follows the active Home Assistant theme, while Dark and Light can be used to force the card appearance independently. The top-bar theme button cycles through all three modes and remembers the choice separately on each device.
