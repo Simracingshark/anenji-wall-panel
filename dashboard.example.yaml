@@ -1,0 +1,57 @@
+type: custom:anenji-wall-panel
+title: ANENJI 11 kW
+
+# Replace every example entity with an entity from your Home Assistant.
+entities:
+  solar_power: sensor.solar_power
+  grid_power: sensor.grid_total_power
+  home_power: sensor.home_load_power
+  battery_soc: sensor.battery_state_of_charge
+  battery_charge_today: sensor.battery_charge_energy_today
+  battery_discharge_today: sensor.battery_discharge_energy_today
+  grid_energy_today: sensor.grid_import_energy_today
+
+  # Optional sensors:
+  # battery_power: sensor.battery_power
+  # battery_voltage: sensor.battery_voltage
+  # load_percent: sensor.inverter_load_percent
+  # inverter_temperature: sensor.inverter_temperature
+
+outlets:
+  - name: Desk
+    entity: switch.desk_outlet
+    icon: mdi:desk-lamp
+  - name: Printer
+    entity: switch.printer_outlet
+    icon: mdi:printer-3d
+  - name: Speaker
+    entity: switch.speaker_outlet
+    icon: mdi:speaker
+  - name: Spare
+    entity: switch.spare_outlet
+    icon: mdi:power-socket-eu
+
+radio:
+  media_player: media_player.wifi_radio
+  current_station: sensor.wifi_radio_current_station
+  playback_status: sensor.wifi_radio_playback_status
+  volume: number.wifi_radio_volume
+  play_pause: button.wifi_radio_play_pause
+  previous: button.wifi_radio_previous_station
+  next: button.wifi_radio_next_station
+  station_select: select.wifi_radio_station
+  play_selected: button.wifi_radio_play_selected
+
+  stations:
+    - name: STATION 1
+      option: Station 1
+    - name: STATION 2
+      option: Station 2
+    - name: STATION 3
+      option: Station 3
+    - name: STATION 4
+      option: Station 4
+
+thresholds:
+  active_power: 20
+  battery_low: 20
