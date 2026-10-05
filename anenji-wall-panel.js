@@ -678,7 +678,7 @@ class AnenjiWallPanel extends HTMLElement {
         padding: 13px 16px; cursor: pointer; text-align: left; z-index: 2; overflow: hidden;
       }
       .energy-node:active, .summary-item:active, .outlet:active, .station:active, .round:active { transform: scale(.97); }
-      .energy-node > ha-icon { position: absolute; left: 12px; width: 34px; height: 34px; }
+      .energy-node > ha-icon { position: absolute; left: 10px; width: 28px; height: 28px; }
       .energy-node > div { min-width: 0; width: 100%; text-align: center; }
       .energy-node span { display: block; color: var(--muted); font-size: 14px; font-weight: 800; letter-spacing: .03em; }
       .energy-node strong { display: block; color: #f4f7fa; margin-top: 4px; font-size: 25px; line-height: 1; white-space: nowrap; }
@@ -693,7 +693,7 @@ class AnenjiWallPanel extends HTMLElement {
       .home strong { color: #f4f7fa; }
       .battery { width: 205px; height: 92px; bottom: 18px; left: 50%; transform: translateX(-50%); border-color: #2ea963; }
       .battery ha-icon, .battery strong { color: var(--green); }
-      .battery #battery-label { font-size: 12px; }
+      .battery #battery-label { font-size: 10.5px; letter-spacing: .02em; }
       .battery.low { border-color: var(--red); }
       .battery.low ha-icon, .battery.low strong { color: var(--red); }
       .battery-meta { display: block; margin-top: 5px; color: #9cabbc; font-size: 10px; font-style: normal; font-weight: 700; line-height: 1; white-space: nowrap; }
