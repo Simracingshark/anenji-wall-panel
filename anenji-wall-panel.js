@@ -133,7 +133,7 @@ class AnenjiWallPanel extends HTMLElement {
                   <span>GRID INPUT</span><strong id="telemetry-grid">-- V • -- Hz</strong>
                 </div>
                 <div class="telemetry-chip telemetry-solar">
-                  <span>SOLAR TODAY</span><strong id="telemetry-solar">-- V • -- kWh</strong>
+                  <span id="telemetry-solar-label">PV INPUTS • TODAY -- kWh</span><strong id="telemetry-solar">PV1 -- V • PV2 -- V</strong>
                 </div>
                 <div class="telemetry-chip telemetry-battery">
                   <span>BATTERY</span><strong id="telemetry-battery">-- V • -- A</strong>
@@ -348,14 +348,22 @@ class AnenjiWallPanel extends HTMLElement {
 
     const gridVoltageEntity = this._energyTelemetryEntity("grid_voltage", ["grid_voltage", "ac_input_voltage"]);
     const gridFrequencyEntity = this._energyTelemetryEntity("grid_frequency", ["grid_frequency", "ac_input_frequency"]);
-    const pvVoltageEntity = this._energyTelemetryEntity("pv_voltage", ["pv_voltage", "pv_input_voltage"]);
+    const pv1VoltageEntity = this._energyTelemetryEntity("pv1_voltage", ["pv1_voltage", "pv_1_voltage", "pv_voltage_1", "pv1_input_voltage", "pv_input_1_voltage"]);
+    const pv2VoltageEntity = this._energyTelemetryEntity("pv2_voltage", ["pv2_voltage", "pv_2_voltage", "pv_voltage_2", "pv2_input_voltage", "pv_input_2_voltage"]);
     const solarTodayEntity = this._energyTelemetryEntity("solar_energy_today", ["estimated_pv_energy_today", "pv_energy_today", "solar_energy_today"]);
     const batteryVoltageEntity = this._energyTelemetryEntity("battery_voltage", ["battery_voltage"]);
-    const batteryCurrentEntity = this._energyTelemetryEntity("battery_current", ["battery_current", "battery_charge_current"]);
     const homeTodayEntity = this._energyTelemetryEntity("home_energy_today", ["estimated_load_energy_today", "load_energy_today", "load_consumption_today"]);
+    const batteryVoltage = this._number(batteryVoltageEntity);
+    const calculatedBatteryCurrent = Number.isFinite(batteryPower) && Number.isFinite(batteryVoltage) && batteryVoltage > 0
+      ? batteryPower / batteryVoltage
+      : NaN;
+    const batteryCurrentText = Number.isFinite(calculatedBatteryCurrent)
+      ? `${calculatedBatteryCurrent >= 0 ? "+" : "−"}${Math.abs(calculatedBatteryCurrent).toFixed(1)} A`
+      : "-- A";
     this._setText("telemetry-grid", `${this._compactSensor(gridVoltageEntity, "V", 0)} • ${this._compactSensor(gridFrequencyEntity, "Hz", 1)}`);
-    this._setText("telemetry-solar", `${this._compactSensor(pvVoltageEntity, "V", 0)} • ${this._compactSensor(solarTodayEntity, "kWh", 1)}`);
-    this._setText("telemetry-battery", `${this._compactSensor(batteryVoltageEntity, "V", 1)} • ${this._compactSensor(batteryCurrentEntity, "A", 1)}`);
+    this._setText("telemetry-solar-label", `PV INPUTS • TODAY ${this._compactSensor(solarTodayEntity, "kWh", 1)}`);
+    this._setText("telemetry-solar", `PV1 ${this._compactSensor(pv1VoltageEntity, "V", 0)} • PV2 ${this._compactSensor(pv2VoltageEntity, "V", 0)}`);
+    this._setText("telemetry-battery", `${this._compactSensor(batteryVoltageEntity, "V", 1)} • ${batteryCurrentText}`);
     this._setText("telemetry-home", this._compactSensor(homeTodayEntity, "kWh", 1));
 
     this._setFlow("solar-flow", solar > this._config.thresholds.active_power, false);
@@ -904,9 +912,9 @@ class AnenjiWallPanel extends HTMLElement {
       .inverter-copy span { font-size: 14px; font-weight: 600; }
       .inverter-copy b { color: var(--blue); font-size: 20px; }
       .energy-node.unavailable { opacity: .45; }
-      .telemetry-chip { position: absolute; z-index: 2; width: 148px; display: grid; gap: 4px; pointer-events: none; }
-      .telemetry-chip span { color: #718396; font-size: 10px; font-weight: 800; letter-spacing: .07em; }
-      .telemetry-chip strong { color: #c7d4df; font-size: 13px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+      .telemetry-chip { position: absolute; z-index: 2; width: 160px; display: grid; gap: 4px; pointer-events: none; }
+      .telemetry-chip span { color: #718396; font-size: 11px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
+      .telemetry-chip strong { color: #d7e2eb; font-size: 14px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
       .telemetry-grid { top: 35px; left: 25px; text-align: left; }
       .telemetry-solar { top: 35px; right: 25px; text-align: right; }
       .telemetry-battery { bottom: 38px; left: 25px; text-align: left; }
@@ -1110,9 +1118,9 @@ class AnenjiWallPanelEditor extends HTMLElement {
           <div class="grid">
             ${this._entityField("Corner: grid voltage", "entities.grid_voltage", ["sensor"])}
             ${this._entityField("Corner: grid frequency", "entities.grid_frequency", ["sensor"])}
-            ${this._entityField("Corner: PV voltage", "entities.pv_voltage", ["sensor"])}
+            ${this._entityField("Corner: PV1 voltage", "entities.pv1_voltage", ["sensor"])}
+            ${this._entityField("Corner: PV2 voltage", "entities.pv2_voltage", ["sensor"])}
             ${this._entityField("Corner: solar energy today", "entities.solar_energy_today", ["sensor"])}
-            ${this._entityField("Corner: battery current", "entities.battery_current", ["sensor"])}
             ${this._entityField("Corner: home energy today", "entities.home_energy_today", ["sensor"])}
           </div>
           <div class="hint">Corner telemetry is auto-detected from the Anenji entity prefix when possible. Use these optional fields only if a value stays unavailable.</div>
