@@ -6,7 +6,7 @@ It combines:
 
 - Anenji 11 kW energy flow
 - Combined grid power (`Grid to Battery + Grid to Load`)
-- Solar, home load, and battery status
+- Solar, home load, battery charge/discharge power, cutoff, and ETA
 - Four outlet controls
 - ESPHome Wi-Fi Radio station, playback, and volume controls
 
@@ -18,6 +18,8 @@ It combines:
 4. Confirm that the resource `/hacsfiles/anenji-wall-panel/anenji-wall-panel.js` was added as a JavaScript module.
 5. Open a dashboard, select **Add card**, and choose **Anenji Wall Panel**.
 6. Select the required entities in the visual editor. YAML is not required.
+
+The editor uses one setting per row so it remains readable inside Home Assistant's narrow card-editor panel. For battery flow, select either one signed power sensor (`+` charging, `−` discharging) or separate charging and discharging power sensors. If none are available, the card estimates battery power as `Solar + Grid − Home`.
 
 `dashboard.example.yaml` remains available as an optional advanced example.
 
