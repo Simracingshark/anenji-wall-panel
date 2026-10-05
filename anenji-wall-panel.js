@@ -17,6 +17,7 @@ class AnenjiWallPanel extends HTMLElement {
   static getStubConfig() {
     return {
       title: "ANENJI 11 kW",
+      theme_mode: "auto",
       entities: {},
       outlets: [
         { name: "Desk", icon: "mdi:desk-lamp" },
@@ -46,6 +47,7 @@ class AnenjiWallPanel extends HTMLElement {
 
     this._config = {
       title: "ANENJI 11 kW",
+      theme_mode: "auto",
       indoor_temperature: null,
       entities: {},
       outlets: [],
@@ -317,6 +319,7 @@ class AnenjiWallPanel extends HTMLElement {
   }
 
   _update() {
+    this._syncTheme();
     const e = this._config.entities;
     const solar = this._number(e.solar_power);
     const grid = this._number(e.grid_power);
@@ -380,6 +383,32 @@ class AnenjiWallPanel extends HTMLElement {
     this._updateP1s();
     this._updateRadio();
     this._updateClock();
+  }
+
+  _syncTheme() {
+    const card = this.shadowRoot.querySelector("ha-card");
+    if (!card) return;
+    const mode = String(this._config.theme_mode || "auto").toLowerCase();
+    let isLight = mode === "light";
+    if (mode === "auto") {
+      const styles = getComputedStyle(this);
+      const color = styles.getPropertyValue("--primary-background-color").trim()
+        || styles.getPropertyValue("--card-background-color").trim();
+      const rgb = this._parseCssColor(color);
+      isLight = rgb ? ((rgb[0] * 299 + rgb[1] * 587 + rgb[2] * 114) / 1000) > 150 : false;
+    }
+    card.classList.toggle("theme-light", isLight);
+  }
+
+  _parseCssColor(color) {
+    const value = String(color || "").trim();
+    const hex = value.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hex) {
+      const full = hex[1].length === 3 ? hex[1].split("").map((part) => part + part).join("") : hex[1];
+      return [0, 2, 4].map((index) => parseInt(full.slice(index, index + 2), 16));
+    }
+    const rgb = value.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i);
+    return rgb ? [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])] : null;
   }
 
   _setPower(prefix, value, entityId, absolute = false) {
@@ -860,6 +889,16 @@ class AnenjiWallPanel extends HTMLElement {
         --line: #344454;
         --text: #f4f7fa;
         --muted: #9cabbc;
+        --canvas-inner: #162331;
+        --canvas-mid: #0b1219;
+        --canvas-outer: #081017;
+        --panel-bg: rgba(12, 20, 28, .72);
+        --node-bg: linear-gradient(145deg, #17222d, #101821);
+        --control-bg: #151f29;
+        --control-raised: #202b36;
+        --progress-track: #263441;
+        --slider-track: #293542;
+        --home-flow: #eaf3fb;
         --blue: #17b9f2;
         --green: #3fea87;
         --amber: #ffbd2e;
@@ -869,41 +908,58 @@ class AnenjiWallPanel extends HTMLElement {
         font-family: Roboto, system-ui, sans-serif;
       }
       * { box-sizing: border-box; }
-      button { font: inherit; color: #f4f7fa !important; -webkit-tap-highlight-color: transparent; }
+      button { font: inherit; color: var(--text) !important; -webkit-tap-highlight-color: transparent; }
       ha-card {
         height: min(500px, calc(100vh - 92px));
         min-height: 460px;
         overflow: hidden;
         border: 0;
         border-radius: 0;
-        background: radial-gradient(circle at 48% 42%, #162331 0, #0b1219 55%, #081017 100%);
+        background: radial-gradient(circle at 48% 42%, var(--canvas-inner) 0, var(--canvas-mid) 55%, var(--canvas-outer) 100%);
         box-shadow: none;
-        color: #f4f7fa !important;
-        --primary-text-color: #f4f7fa;
-        --secondary-text-color: #9cabbc;
+        color: var(--text) !important;
+        --primary-text-color: var(--text);
+        --secondary-text-color: var(--muted);
       }
-      .shell { height: 100%; padding: 8px 16px 10px; color: #f4f7fa; }
+      ha-card.theme-light {
+        --panel: #ffffff;
+        --panel-soft: #f4f7fa;
+        --line: #c9d4de;
+        --text: #17212b;
+        --muted: #617181;
+        --canvas-inner: #f8fbfd;
+        --canvas-mid: #edf3f7;
+        --canvas-outer: #e5edf3;
+        --panel-bg: rgba(255, 255, 255, .84);
+        --node-bg: linear-gradient(145deg, #ffffff, #f1f5f8);
+        --control-bg: #f4f7fa;
+        --control-raised: #e9eff4;
+        --progress-track: #dce5ec;
+        --slider-track: #d4dee6;
+        --home-flow: #33485a;
+      }
+      .shell { height: 100%; padding: 8px 16px 10px; color: var(--text); }
       .topbar { height: 42px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; }
       .datetime { display: flex; align-items: baseline; gap: 20px; }
-      #clock { color: #f4f7fa; font-size: 31px; font-weight: 800; letter-spacing: .02em; line-height: 1; }
+      #clock { color: var(--text); font-size: 31px; font-weight: 800; letter-spacing: .02em; line-height: 1; }
       #date { color: var(--muted); font-size: 18px; font-weight: 600; }
-      .status-strip { display: flex; align-items: center; gap: 10px; color: #d9e5ef; font-size: 19px; font-weight: 700; }
+      .status-strip { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 19px; font-weight: 700; }
       .status-strip ha-icon { width: 25px; height: 25px; }
       .divider { width: 1px; height: 28px; background: var(--line); margin: 0 6px; }
       .dashboard { height: calc(100% - 42px); display: grid; grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr); gap: 10px; }
-      .panel { border: 1px solid #334353; border-radius: 14px; background: rgba(12, 20, 28, .72); }
+      .panel { border: 1px solid var(--line); border-radius: 14px; background: var(--panel-bg); }
       .energy-panel { display: grid; grid-template-rows: minmax(0, 1fr) 84px; min-width: 0; overflow: hidden; }
       .energy-map { position: relative; min-height: 0; }
       .energy-node {
         position: absolute; display: flex; align-items: center; gap: 13px; min-width: 0;
-        border: 1px solid var(--line); border-radius: 12px; background: linear-gradient(145deg, #17222d, #101821);
+        border: 1px solid var(--line); border-radius: 12px; background: var(--node-bg);
         padding: 13px 16px; cursor: pointer; text-align: left; z-index: 2; overflow: hidden;
       }
       .energy-node:active, .summary-item:active, .outlet:active, .station:active, .round:active { transform: scale(.97); }
       .energy-node > ha-icon { position: absolute; left: 10px; width: 28px; height: 28px; }
       .energy-node > div { min-width: 0; width: 100%; text-align: center; }
       .energy-node span { display: block; color: var(--muted); font-size: 14px; font-weight: 800; letter-spacing: .03em; }
-      .energy-node strong { display: block; color: #f4f7fa; margin-top: 4px; font-size: 25px; line-height: 1; white-space: nowrap; }
+      .energy-node strong { display: block; color: var(--text); margin-top: 4px; font-size: 25px; line-height: 1; white-space: nowrap; }
       .energy-node strong b { font: inherit; }
       .energy-node small { font-size: 16px; }
       .solar { width: 220px; height: 86px; top: 18px; left: 50%; transform: translateX(-50%); border-color: #b68c2d; }
@@ -911,24 +967,24 @@ class AnenjiWallPanel extends HTMLElement {
       .grid { width: 160px; height: 96px; top: 50%; left: 18px; transform: translateY(-50%); border-color: #188cb7; }
       .grid ha-icon, .grid strong { color: var(--blue); }
       .home { width: 160px; height: 96px; top: 50%; right: 18px; transform: translateY(-50%); }
-      .home ha-icon { color: #eaf3fb; }
-      .home strong { color: #f4f7fa; }
+      .home ha-icon { color: var(--home-flow); }
+      .home strong { color: var(--text); }
       .battery { width: 205px; height: 92px; bottom: 18px; left: 50%; transform: translateX(-50%); border-color: #2ea963; }
       .battery ha-icon, .battery strong { color: var(--green); }
       .battery #battery-label { font-size: 13px; }
       .battery.low { border-color: var(--red); }
       .battery.low ha-icon, .battery.low strong { color: var(--red); }
-      .battery-meta { display: block; margin-top: 5px; color: #9cabbc; font-size: 12px; font-style: normal; font-weight: 700; line-height: 1; white-space: nowrap; }
+      .battery-meta { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; font-style: normal; font-weight: 700; line-height: 1; white-space: nowrap; }
       .inverter { width: 180px; height: 106px; top: 50%; left: 50%; transform: translate(-50%, -50%); justify-content: center; padding: 10px 12px; text-align: center; }
       .inverter > ha-icon { display: none; }
       .inverter-copy { display: grid; gap: 4px; width: 100%; text-align: center; }
-      .inverter-copy strong { color: #f4f7fa; font-size: 15px; line-height: 1.15; margin: 0 0 2px; white-space: nowrap; }
+      .inverter-copy strong { color: var(--text); font-size: 15px; line-height: 1.15; margin: 0 0 2px; white-space: nowrap; }
       .inverter-copy span { font-size: 14px; font-weight: 600; }
       .inverter-copy b { color: var(--blue); font-size: 20px; }
       .energy-node.unavailable { opacity: .45; }
       .telemetry-chip { position: absolute; z-index: 2; width: 160px; display: grid; gap: 4px; pointer-events: none; }
       .telemetry-chip span { color: #718396; font-size: 11px; font-weight: 800; letter-spacing: .04em; white-space: nowrap; }
-      .telemetry-chip strong { color: #d7e2eb; font-size: 14px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
+      .telemetry-chip strong { color: var(--text); font-size: 14px; font-weight: 800; line-height: 1.1; white-space: nowrap; }
       .telemetry-pv-lines { display: grid; gap: 3px; }
       .telemetry-pv-lines b { color: inherit; font: inherit; }
       .telemetry-grid { top: 35px; left: 25px; text-align: left; }
@@ -950,35 +1006,36 @@ class AnenjiWallPanel extends HTMLElement {
       }
       .solar-flow { color: var(--amber); width: 38px; height: calc(50% - 157px); top: 104px; left: calc(50% - 19px); }
       .grid-flow { color: var(--blue); height: 38px; width: calc(50% - 268px); top: calc(50% - 19px); left: 178px; }
-      .home-flow { color: #eaf3fb; height: 38px; width: calc(50% - 268px); top: calc(50% - 19px); right: 178px; }
+      .home-flow { color: var(--home-flow); height: 38px; width: calc(50% - 268px); top: calc(50% - 19px); right: 178px; }
       .battery-flow { color: var(--green); width: 38px; height: calc(50% - 163px); bottom: 110px; left: calc(50% - 19px); }
-      .energy-summary { border-top: 1px solid #2c3b49; display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 8px; }
+      .energy-summary { border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding: 10px 8px; }
       .summary-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: none; border: 0; text-align: left; cursor: pointer; min-width: 0; }
-      .summary-item + .summary-item { border-left: 1px solid #344454; }
+      .summary-item + .summary-item { border-left: 1px solid var(--line); }
       .summary-item ha-icon { width: 27px; height: 27px; flex: 0 0 27px; }
       .summary-item span { display: block; color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
-      .summary-item strong { display: block; color: #f4f7fa; margin-top: 3px; font-size: 17px; white-space: nowrap; }
+      .summary-item strong { display: block; color: var(--text); margin-top: 3px; font-size: 17px; white-space: nowrap; }
       .summary-item.green ha-icon { color: var(--green); }
       .summary-item.amber ha-icon { color: var(--amber); }
       .summary-item.blue ha-icon { color: var(--blue); }
       .side-column { min-width: 0; display: grid; grid-template-rows: 184px minmax(0, 1fr); gap: 10px; }
-      h2 { color: #f4f7fa; margin: 0; font-size: 20px; letter-spacing: .02em; }
+      h2 { color: var(--text); margin: 0; font-size: 20px; letter-spacing: .02em; }
       .utility-panel { padding: 9px 11px 10px; min-height: 0; }
-      .utility-tabs { height: 27px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid #2c3b49; }
+      .utility-tabs { height: 27px; display: flex; align-items: center; gap: 18px; border-bottom: 1px solid var(--line); }
       .utility-tab { height: 28px; padding: 0 1px 7px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted) !important; font-size: 14px; font-weight: 800; cursor: pointer; white-space: nowrap; }
-      .utility-tab.active { color: #f4f7fa !important; border-bottom-color: var(--blue); }
+      .utility-tab.active { color: var(--text) !important; border-bottom-color: var(--blue); }
       .utility-tab i { display: inline-block; width: 7px; height: 7px; margin-left: 4px; border-radius: 50%; background: #52606e; }
       .utility-tab i.online { background: var(--blue); }
       .utility-tab i.active { background: var(--green); box-shadow: 0 0 8px rgba(63, 234, 135, .75); }
       .utility-view { display: none; height: calc(100% - 27px); padding-top: 7px; }
       .utility-view.active { display: block; }
       .outlet-grid { height: 100%; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 7px; }
-      .outlet { border: 1px solid #3a4a59; border-radius: 11px; background: #151f29; display: grid; grid-template-columns: 34px 1fr 29px; align-items: center; gap: 9px; padding: 9px 11px; cursor: pointer; text-align: left; }
-      .outlet ha-icon { width: 31px; height: 31px; color: #c9d5e0; }
-      .outlet span { color: #f4f7fa; overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 700; white-space: nowrap; }
+      .outlet { border: 1px solid var(--line); border-radius: 11px; background: var(--control-bg); display: grid; grid-template-columns: 34px 1fr 29px; align-items: center; gap: 9px; padding: 9px 11px; cursor: pointer; text-align: left; }
+      .outlet ha-icon { width: 31px; height: 31px; color: var(--muted); }
+      .outlet span { color: var(--text); overflow: hidden; text-overflow: ellipsis; font-size: 16px; font-weight: 700; white-space: nowrap; }
       .toggle-dot { width: 29px; height: 17px; border-radius: 12px; background: #34414e; position: relative; }
       .toggle-dot::after { content: ""; position: absolute; width: 13px; height: 13px; border-radius: 50%; top: 2px; left: 2px; background: #aeb9c5; transition: left .18s; }
       .outlet.on { border-color: var(--green); background: linear-gradient(145deg, rgba(28, 116, 67, .55), rgba(15, 48, 34, .72)); }
+      ha-card.theme-light .outlet.on { background: linear-gradient(145deg, #dff8e9, #c9f0da); }
       .outlet.on ha-icon { color: var(--green); }
       .outlet.on .toggle-dot { background: var(--green); }
       .outlet.on .toggle-dot::after { left: 14px; background: white; }
@@ -991,14 +1048,14 @@ class AnenjiWallPanel extends HTMLElement {
       #p1s-status { flex: 0 0 auto; color: var(--muted); border: 1px solid #3d4d5c; border-radius: 999px; padding: 3px 8px; font-size: 11px; font-weight: 800; }
       #p1s-status.active { color: var(--green); border-color: rgba(63, 234, 135, .55); }
       .p1s-progress-row { display: grid; grid-template-columns: minmax(0, 1fr) 43px; align-items: center; gap: 9px; }
-      .p1s-progress-bar { --p1s-progress: 0%; height: 9px; overflow: hidden; border-radius: 999px; background: #263441; }
+      .p1s-progress-bar { --p1s-progress: 0%; height: 9px; overflow: hidden; border-radius: 999px; background: var(--progress-track); }
       .p1s-progress-bar i { display: block; width: var(--p1s-progress); height: 100%; border-radius: inherit; background: var(--green); box-shadow: 0 0 9px rgba(63, 234, 135, .55); }
-      .p1s-progress-row > strong { color: #f4f7fa; font-size: 16px; text-align: right; }
+      .p1s-progress-row > strong { color: var(--text); font-size: 16px; text-align: right; }
       .p1s-metrics { display: grid; grid-template-columns: repeat(4, 1fr); align-items: baseline; gap: 6px; }
       .p1s-metrics span { color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; text-align: center; }
-      .p1s-metrics b { display: block; color: #f4f7fa; margin-top: 1px; font-size: 15px; }
+      .p1s-metrics b { display: block; color: var(--text); margin-top: 1px; font-size: 15px; }
       .p1s-actions { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px 38px; gap: 6px; }
-      .p1s-action, #p1s-speed { height: 38px; border: 1px solid #3a4a59; border-radius: 8px; background: #151f29; color: #f4f7fa !important; }
+      .p1s-action, #p1s-speed { height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--control-bg); color: var(--text) !important; }
       .p1s-action { display: grid; place-items: center; padding: 0; cursor: pointer; position: relative; overflow: hidden; }
       .p1s-action ha-icon { width: 25px; height: 25px; }
       .p1s-action.on { color: var(--amber) !important; border-color: #9e7924; }
@@ -1011,22 +1068,22 @@ class AnenjiWallPanel extends HTMLElement {
       .status-pill { border: 1px solid #3d4d5c; border-radius: 999px; color: var(--muted); padding: 3px 8px; font-size: 10px; font-weight: 800; }
       .status-pill.active { color: var(--green); border-color: rgba(63, 234, 135, .55); }
       .now-playing { min-width: 0; text-align: center; display: grid; gap: 2px; }
-      .now-playing strong { color: #f4f7fa; font-size: 20px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .now-playing strong { color: var(--text); font-size: 20px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .now-playing span { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .transport { display: flex; align-items: center; justify-content: center; gap: 31px; }
       .round { display: grid; place-items: center; border-radius: 50%; cursor: pointer; }
       .round ha-icon { width: 31px; height: 31px; }
-      .round.secondary { width: 43px; height: 43px; border: 1px solid #425263; background: #202b36; }
+      .round.secondary { width: 43px; height: 43px; border: 1px solid var(--line); background: var(--control-raised); }
       .round.primary { width: 56px; height: 56px; border: 1px solid #52aef1; background: linear-gradient(145deg, #21a8f4, #0875df); box-shadow: 0 7px 20px rgba(0, 126, 235, .24); }
       .round.primary ha-icon { width: 38px; height: 38px; }
       .volume-row { display: grid; grid-template-columns: 24px 1fr 39px; align-items: center; gap: 9px; }
       .volume-row ha-icon { width: 23px; height: 23px; }
-      .volume-row span { color: #d4deea; font-size: 14px; font-weight: 700; text-align: right; }
-      input[type="range"] { --volume: 0%; appearance: none; height: 6px; border-radius: 5px; outline: none; background: linear-gradient(to right, #159ff0 0 var(--volume), #293542 var(--volume) 100%); }
+      .volume-row span { color: var(--text); font-size: 14px; font-weight: 700; text-align: right; }
+      input[type="range"] { --volume: 0%; appearance: none; height: 6px; border-radius: 5px; outline: none; background: linear-gradient(to right, #159ff0 0 var(--volume), var(--slider-track) var(--volume) 100%); }
       input[type="range"]::-webkit-slider-thumb { appearance: none; width: 17px; height: 17px; border-radius: 50%; background: #f3f8fc; box-shadow: 0 1px 5px #0008; }
       .station-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; min-height: 0; }
-      .station { color: #f4f7fa !important; border: 1px solid #394957; border-radius: 9px; background: #151f29; font-size: 12px; font-weight: 800; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; }
-      .station.active { border-color: #159ff0; background: linear-gradient(145deg, #148ee8, #0967c7); }
+      .station { color: var(--text) !important; border: 1px solid var(--line); border-radius: 9px; background: var(--control-bg); font-size: 12px; font-weight: 800; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; }
+      .station.active { color: white !important; border-color: #159ff0; background: linear-gradient(145deg, #148ee8, #0967c7); }
       @media (min-width: 1200px) {
         ha-card { height: min(580px, calc(100vh - 92px)); min-height: 540px; }
         .shell { width: min(100%, 1400px); margin: 0 auto; padding: 10px 20px 12px; }
@@ -1057,27 +1114,34 @@ class AnenjiWallPanel extends HTMLElement {
         .status-strip ha-icon { width: 22px; height: 22px; }
         .divider { height: 23px; margin: 0 3px; }
         .dashboard { height: auto; grid-template-columns: minmax(0, 1fr); gap: 9px; }
-        .energy-panel { display: grid; grid-template-rows: 565px auto; min-height: 0; }
-        .energy-map { height: 565px; }
-        .solar { width: calc(100% - 32px); max-width: 280px; height: 86px; top: 12px; left: 50%; transform: translateX(-50%); }
-        .grid { width: calc(50% - 20px); height: 92px; top: 112px; left: 12px; transform: none; padding-left: 10px; padding-right: 10px; }
-        .home { width: calc(50% - 20px); height: 92px; top: 112px; right: 12px; transform: none; padding-left: 10px; padding-right: 10px; }
-        .grid strong, .home strong { font-size: 21px; }
+        .energy-panel { display: grid; grid-template-rows: 570px auto; min-height: 0; }
+        .energy-map { height: 570px; }
+        .solar { width: calc(100% - 60px); max-width: 260px; height: 82px; top: 10px; left: 50%; transform: translateX(-50%); }
+        .grid, .home { width: clamp(88px, 24vw, 108px); height: 92px; top: 180px; transform: none; padding: 9px 5px; }
+        .grid { left: 8px; }
+        .home { right: 8px; }
+        .grid > ha-icon, .home > ha-icon { display: none; }
+        .grid strong, .home strong { font-size: 20px; }
         .grid small, .home small { font-size: 14px; }
-        .inverter { width: calc(100% - 64px); max-width: 290px; height: 100px; top: 218px; left: 50%; transform: translateX(-50%); }
-        .battery { width: calc(100% - 32px); max-width: 260px; height: 92px; top: 332px; bottom: auto; left: 50%; transform: translateX(-50%); }
-        .flow { display: none; }
+        .inverter { width: clamp(120px, 34vw, 150px); height: 112px; top: 170px; left: 50%; transform: translateX(-50%); padding-left: 6px; padding-right: 6px; }
+        .inverter-copy strong { white-space: normal; font-size: 14px; }
+        .battery { width: calc(100% - 70px); max-width: 250px; height: 96px; top: 342px; bottom: auto; left: 50%; transform: translateX(-50%); }
+        .flow { display: flex; overflow: visible; font-size: 29px; }
+        .solar-flow { width: 34px; height: 78px; top: 92px; left: calc(50% - 17px); }
+        .grid-flow { width: 20px; height: 34px; top: 209px; left: calc(50% - clamp(83px, 23vw, 96px)); }
+        .home-flow { width: 20px; height: 34px; top: 209px; right: calc(50% - clamp(83px, 23vw, 96px)); }
+        .battery-flow { width: 34px; height: 60px; top: 282px; bottom: auto; left: calc(50% - 17px); }
         .telemetry-chip { width: calc(50% - 24px); gap: 3px; }
         .telemetry-chip span { font-size: 10px; }
         .telemetry-chip strong { font-size: 13px; }
-        .telemetry-grid { top: 447px; left: 15px; }
-        .telemetry-solar { top: 447px; right: 15px; }
-        .telemetry-battery { top: 510px; bottom: auto; left: 15px; }
-        .telemetry-home { top: 510px; bottom: auto; right: 15px; }
+        .telemetry-grid { top: 458px; left: 15px; }
+        .telemetry-solar { top: 458px; right: 15px; }
+        .telemetry-battery { top: 520px; bottom: auto; left: 15px; }
+        .telemetry-home { top: 520px; bottom: auto; right: 15px; }
         .energy-summary { min-height: 148px; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); padding: 7px 9px; }
         .summary-item { padding: 8px 9px; border: 0 !important; }
-        .summary-item:nth-child(even) { border-left: 1px solid #344454 !important; }
-        .summary-item:nth-child(n+3) { border-top: 1px solid #344454 !important; }
+        .summary-item:nth-child(even) { border-left: 1px solid var(--line) !important; }
+        .summary-item:nth-child(n+3) { border-top: 1px solid var(--line) !important; }
         .summary-item ha-icon { width: 29px; height: 29px; flex-basis: 29px; }
         .summary-item span { font-size: 11px; }
         .summary-item strong { font-size: 18px; }
@@ -1090,7 +1154,7 @@ class AnenjiWallPanel extends HTMLElement {
         #date { font-size: 13px; }
         .status-strip { font-size: 14px; }
         .energy-node > ha-icon { left: 8px; width: 25px; height: 25px; }
-        .grid strong, .home strong { font-size: 19px; }
+        .grid strong, .home strong { font-size: 18px; }
         .telemetry-chip span { font-size: 9px; }
         .telemetry-chip strong { font-size: 12px; }
         .summary-item { gap: 6px; padding-left: 6px; padding-right: 6px; }
@@ -1170,6 +1234,7 @@ class AnenjiWallPanelEditor extends HTMLElement {
         ${this._section("general", "General", `
           <div class="grid">
             ${this._textField("Panel title", "title")}
+            ${this._selectField("Theme", "theme_mode", [["auto", "Auto (Home Assistant)"], ["dark", "Dark"], ["light", "Light"]])}
             ${this._entityField("Indoor temperature", "indoor_temperature", ["sensor"])}
             ${this._numberField("Battery capacity (kWh)", "battery_capacity_kwh", 0, 1000)}
             ${this._numberField("Switch to grid at (%)", "grid_cutoff_soc", 0, 100)}
@@ -1277,6 +1342,13 @@ class AnenjiWallPanelEditor extends HTMLElement {
   _numberField(label, path, min, max) {
     const value = this._getPath(path);
     return `<label>${label}<input type="number" data-config-path="${path}" value="${this._escape(value == null ? "" : value)}" min="${min}" max="${max}"></label>`;
+  }
+
+  _selectField(label, path, options) {
+    const value = String(this._getPath(path) || "");
+    return `<label>${label}<select data-config-path="${path}">${options.map(([optionValue, optionLabel]) =>
+      `<option value="${this._escape(optionValue)}" ${value === optionValue ? "selected" : ""}>${this._escape(optionLabel)}</option>`
+    ).join("")}</select></label>`;
   }
 
   _bindEditorEvents() {
