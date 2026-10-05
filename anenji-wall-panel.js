@@ -969,8 +969,8 @@ class AnenjiWallPanel extends HTMLElement {
       #date { color: var(--muted); font-size: 18px; font-weight: 600; }
       .status-strip { display: flex; align-items: center; gap: 10px; color: var(--text); font-size: 19px; font-weight: 700; }
       .status-strip ha-icon { width: 25px; height: 25px; }
-      .theme-toggle { width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--control-bg); cursor: pointer; }
-      .theme-toggle ha-icon { width: 22px; height: 22px; color: var(--amber); }
+      .theme-toggle { position: relative; width: 34px; height: 34px; display: block; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--control-bg); cursor: pointer; }
+      .theme-toggle ha-icon { position: absolute; top: 50%; left: 50%; width: 22px; height: 22px; margin: 0; line-height: 0; transform: translate(-50%, -50%); color: var(--amber); }
       .theme-toggle[data-mode="dark"] ha-icon { color: #86bdf5; }
       .theme-toggle[data-mode="auto"] ha-icon { color: var(--muted); }
       .divider { width: 1px; height: 28px; background: var(--line); margin: 0 6px; }
