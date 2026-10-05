@@ -8,6 +8,7 @@ It combines:
 - Combined grid power (`Grid to Battery + Grid to Load`)
 - Solar, home load, battery charge/discharge power, cutoff, and ETA
 - Four outlet controls
+- Bambu Lab P1S status and controls in a tabbed panel
 - ESPHome Wi-Fi Radio station, playback, and volume controls
 
 ## HACS installation
@@ -20,6 +21,8 @@ It combines:
 6. Select the required entities in the visual editor. YAML is not required.
 
 The editor uses one setting per row so it remains readable inside Home Assistant's narrow card-editor panel. Select the inverter's `Battery Power` entity for the combined net battery flow, regardless of whether charging comes from solar, grid, or both. If it is unavailable, the card estimates battery power as `Solar + Grid − Home`. Battery ETA is shown in its own summary block using the configured capacity and grid-switch percentage.
+
+For Bambu P1S, select only the printer's `Print Status` sensor. The card derives the matching task, progress, layers, remaining time, nozzle and bed temperatures, speed selector, chamber light, pause/resume, and stop entities from the same entity prefix. Stop requires a deliberate 0.9-second hold.
 
 `dashboard.example.yaml` remains available as an optional advanced example.
 
